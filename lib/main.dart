@@ -6,13 +6,19 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'models/friend_profile.dart';
+import 'models/want_to_visit.dart';
 import 'models/gamification_data.dart';
 import 'models/restaurant_record.dart';
 import 'services/friend_sync_service.dart';
+import 'utils/pin_grouping.dart';
 import 'services/restaurant_search_service.dart';
 import 'services/share_service.dart';
 import 'services/storage_service.dart';
 import 'widgets/charge_celebration_dialog.dart';
+import 'widgets/cluster_pin_marker.dart';
+import 'widgets/merged_pin_marker.dart';
+import 'widgets/want_list_sheet.dart';
+import 'widgets/want_pin_marker.dart';
 import 'widgets/friend_management_sheet.dart';
 import 'widgets/friend_pin_marker.dart';
 import 'widgets/friend_restaurant_detail_sheet.dart';
@@ -92,6 +98,12 @@ class _MapScreenState extends State<MapScreen>
   List<FriendProfile> _friends = [];
   bool _syncPending = false;
   DateTime? _lastSyncAt;
+
+  // F2：クラスタリング判定用の現在ズーム
+  double _currentZoom = 16.0;
+
+  // N1：行きたい店リスト
+  List<WantToVisit> _wantList = [];
   MapFilterMode _mapFilterMode = MapFilterMode.allWithFriends;
   String? _selectedFriendCode;
 
@@ -145,6 +157,227 @@ class _MapScreenState extends State<MapScreen>
     return 'まだ同期していません';
   }
 
+  // ---------------------------------------------------------------------------
+  // N1：行きたいリスト関連
+  // ---------------------------------------------------------------------------
+
+  /// 行きたい店を追加し、結果をスナックバーで知らせる（追加できたか返す）。
+  Future<bool> _addWant({
+    required String name,
+    required String category,
+    required double latitude,
+    required double longitude,
+    required WantSource source,
+    String? sourceLabel,
+    bool showFeedback = true,
+  }) async {
+    final want = WantToVisit(
+      id: 'want_${DateTime.now().microsecondsSinceEpoch}',
+      name: name,
+      category: category,
+      latitude: latitude,
+      longitude: longitude,
+      source: source,
+      sourceLabel: sourceLabel,
+      createdAt: DateTime.now(),
+    );
+    final res = await _storageService.addWant(want);
+    if (mounted) {
+      setState(() => _wantList = res.wants);
+      if (showFeedback) {
+        final message = switch (res.result) {
+          AddWantResult.added => '🔖 「$name」を行きたいリストに追加しました',
+          AddWantResult.alreadyInWantList => 'すでに行きたいリストに入っています',
+          AddWantResult.alreadyRegistered => 'その店はすでに登録済みです',
+        };
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+    return res.result == AddWantResult.added;
+  }
+
+  /// 地図の長押し：その場所を行きたい店として登録する。
+  Future<void> _handleMapLongPress(LatLng point) async {
+    final nameController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text(
+            '行きたい店として登録',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          content: TextField(
+            controller: nameController,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: '店名',
+              hintText: '例: 気になるラーメン屋',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('キャンセル'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('登録する'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+    final name = nameController.text.trim().isEmpty
+        ? '行きたい店'
+        : nameController.text.trim();
+    await _addWant(
+      name: name,
+      category: '🍽 その他',
+      latitude: point.latitude,
+      longitude: point.longitude,
+      source: WantSource.map,
+    );
+  }
+
+  /// 行きたいピンをタップしたときの簡易詳細。
+  void _showWantDetail(WantToVisit want) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.bookmark, color: Color(0xFF00897B)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      want.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${want.category} • ${want.source.label}'
+                '${want.sourceLabel != null ? '（${want.sourceLabel}さん）' : ''}',
+                style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF5722),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        _registerAtWant(want);
+                      },
+                      icon: const Icon(Icons.add_location_alt, size: 18),
+                      label: const Text(
+                        '行って登録する',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      Navigator.of(ctx).pop();
+                      final updated = await _storageService.removeWant(want.id);
+                      if (mounted) {
+                        setState(() => _wantList = updated);
+                      }
+                    },
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    label: const Text('削除'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// 行きたい店の場所へ移動して、登録シートを開く。
+  Future<void> _registerAtWant(WantToVisit want) async {
+    _mapController.move(want.latLng, 17.2);
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    if (mounted) {
+      await _openQuickRegisterSheet();
+    }
+  }
+
+  /// 行きたいリストのシートを開く。
+  void _openWantListSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (sheetCtx, setSheetState) {
+            return WantListSheet(
+              wants: _wantList,
+              baseLatLng: _activeBaseLatLng,
+              onTapItem: (want) {
+                Navigator.of(ctx).pop();
+                _mapController.move(want.latLng, 17.2);
+                _showWantDetail(want);
+              },
+              onRegisterAt: (want) {
+                Navigator.of(ctx).pop();
+                _registerAtWant(want);
+              },
+              onRemove: (want) async {
+                final updated = await _storageService.removeWant(want.id);
+                setState(() => _wantList = updated);
+                setSheetState(() {});
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   /// 起動時：追加済みフレンドのマップをバックグラウンドで最新化
   Future<void> _refreshFriendsInBackground() async {
     final updated = await _friendService.refreshFriends();
@@ -160,6 +393,7 @@ class _MapScreenState extends State<MapScreen>
     final loadedCustomTitle = await _storageService.loadCustomTitle();
     final loadedThemeIdx = await _storageService.loadCardThemeIndex();
     final loadedIsPro = await _storageService.loadIsProMember();
+    final loadedWants = await _storageService.loadWantList();
     final friendInit = await _friendService.initialize(
       userName: loadedName,
       records: loadedRecords,
@@ -174,6 +408,7 @@ class _MapScreenState extends State<MapScreen>
         _isProMember = loadedIsPro;
         _myFriendCode = friendInit.myCode;
         _friends = friendInit.friends;
+        _wantList = loadedWants;
         _pullSyncState();
       });
       unawaited(_refreshFriendsInBackground());
@@ -374,6 +609,16 @@ class _MapScreenState extends State<MapScreen>
           existingRecords: _records,
           currentLatLng: targetLatLng,
           onSubmit: _handleSaveOrChargeRestaurant,
+          onAddToWantList: (candidate) {
+            return _addWant(
+              name: candidate.name,
+              category: candidate.category,
+              latitude: candidate.latitude,
+              longitude: candidate.longitude,
+              source: WantSource.search,
+              showFeedback: false,
+            );
+          },
         );
       },
     );
@@ -739,6 +984,20 @@ class _MapScreenState extends State<MapScreen>
         },
       );
     }
+
+    // N1：行きたいリストに同じ店があれば卒業させる
+    if (!result.isRepeat && mounted) {
+      final grad = await _storageService.graduateWantsFor(result.record);
+      if (grad.graduatedCount > 0 && mounted) {
+        setState(() => _wantList = grad.wants);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🎓 「行きたいリスト」から卒業しました！'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   /// マップ上の自分の店舗ピンをタップした際に詳細・シェアシートを表示
@@ -785,6 +1044,177 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
+  /// F1/F2：自分とフレンドの店舗ピンを構築する。
+  /// 近い場所のピンは合体ピンにまとめ、ズームアウト時はクラスタ化する。
+  List<Marker> _buildShopMarkers(List<FriendProfile> visibleFriends) {
+    final entries = <PinEntry>[
+      if (_showMyPins)
+        for (final record in _records) PinEntry(record: record),
+      for (final friend in visibleFriends)
+        for (final record in friend.records)
+          PinEntry(record: record, friend: friend),
+    ];
+    final groups = groupPins(entries);
+
+    if (clusteringEnabled(_currentZoom)) {
+      final cells = clusterGroups(
+        groups,
+        clusterCellDegreesForZoom(_currentZoom),
+      );
+      return [
+        for (final cell in cells)
+          if (cell.length == 1)
+            _markerForGroup(cell.first)
+          else
+            Marker(
+              point: clusterCenter(cell),
+              width: 62,
+              height: 62,
+              alignment: Alignment.center,
+              child: ClusterPinMarker(
+                shopCount:
+                    cell.fold<int>(0, (sum, g) => sum + g.entries.length),
+                onTap: () {
+                  _mapController.move(
+                    clusterCenter(cell),
+                    (_currentZoom + 2).clamp(3.0, 17.5),
+                  );
+                },
+              ),
+            ),
+      ];
+    }
+
+    return [for (final group in groups) _markerForGroup(group)];
+  }
+
+  /// グループ1件分のマーカー（単体なら通常ピン、複数なら合体ピン）。
+  Marker _markerForGroup(PinGroup group) {
+    if (!group.isMerged) {
+      final entry = group.entries.first;
+      if (entry.isMine) {
+        final record = entry.record;
+        return Marker(
+          point: record.latLng,
+          width: RestaurantPinMarker.markerWidthForCount(record.chargeCount),
+          height: RestaurantPinMarker.markerHeightForCount(record.chargeCount),
+          alignment: Alignment.center,
+          child: RestaurantPinMarker(
+            record: record,
+            onTap: () => _showRestaurantDetail(record),
+          ),
+        );
+      }
+      final friend = entry.friend!;
+      final record = entry.record;
+      return Marker(
+        point: record.latLng,
+        width: 112,
+        height: 102,
+        alignment: Alignment.center,
+        child: FriendPinMarker(
+          friend: friend,
+          record: record,
+          onTap: () => _showFriendRestaurantDetail(friend, record),
+        ),
+      );
+    }
+
+    return Marker(
+      point: group.point,
+      width: 120,
+      height: 92,
+      alignment: Alignment.center,
+      child: MergedPinMarker(
+        group: group,
+        onTap: () => _showPinGroupChooser(group),
+      ),
+    );
+  }
+
+  /// F1：合体ピンをタップしたときの選択シート（自分の記録／フレンドの記録）。
+  void _showPinGroupChooser(PinGroup group) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'この場所のお店',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '見たい記録を選んでください',
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+              const SizedBox(height: 10),
+              for (final entry in group.entries)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: entry.isMine
+                        ? const Color(0xFFFF5722)
+                        : entry.friend!.themeColor,
+                    child: Text(
+                      entry.isMine ? '自' : entry.friend!.avatarEmoji,
+                      style: TextStyle(
+                        color: entry.isMine ? Colors.white : null,
+                        fontSize: entry.isMine ? 13 : 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    entry.record.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    entry.isMine
+                        ? '自分の記録 • チャージ${entry.record.chargeCount}回'
+                        : '${entry.friend!.displayName}さんの記録 • チャージ${entry.record.chargeCount}回',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    if (entry.isMine) {
+                      _showRestaurantDetail(entry.record);
+                    } else {
+                      _showFriendRestaurantDetail(
+                        entry.friend!,
+                        entry.record,
+                      );
+                    }
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   /// マップ上の「フレンドの店舗ピン」をタップした際の詳細シートを表示
   void _showFriendRestaurantDetail(
     FriendProfile friend,
@@ -798,6 +1228,18 @@ class _MapScreenState extends State<MapScreen>
         return FriendRestaurantDetailSheet(
           friend: friend,
           record: record,
+          onAddToWantList: friend.isSample
+              ? null
+              : () {
+                  _addWant(
+                    name: record.name,
+                    category: record.category,
+                    latitude: record.latitude,
+                    longitude: record.longitude,
+                    source: WantSource.friend,
+                    sourceLabel: friend.displayName,
+                  );
+                },
           onImportToMyMap: () {
             _handleSaveOrChargeRestaurant(
               id: record.id,
@@ -908,11 +1350,19 @@ class _MapScreenState extends State<MapScreen>
           // 1. 地図表示（flutter_map + OpenStreetMap）
           FlutterMap(
             mapController: _mapController,
-            options: const MapOptions(
+            options: MapOptions(
               initialCenter: _tokyoStation,
               initialZoom: 16.0,
               minZoom: 3.0,
               maxZoom: 19.0,
+              onPositionChanged: (camera, hasGesture) {
+                if ((camera.zoom - _currentZoom).abs() > 0.05) {
+                  setState(() => _currentZoom = camera.zoom);
+                }
+              },
+              onLongPress: (tapPosition, point) {
+                _handleMapLongPress(point);
+              },
             ),
             children: [
               TileLayer(
@@ -972,47 +1422,26 @@ class _MapScreenState extends State<MapScreen>
                 ],
               ),
 
-              // ステップ⑦：フレンドの共有店舗ピンレイヤー
-              MarkerLayer(
-                markers: [
-                  for (final friend in visibleFriends)
-                    for (final record in friend.records)
+              // F1/F2：自分＋フレンドの店舗ピンを統合レイヤーで表示
+              // （同一地点は合体ピン、ズームアウト時はクラスタピンに集約）
+              MarkerLayer(markers: _buildShopMarkers(visibleFriends)),
+
+              // N1：行きたい店ピン（フレンド単独表示モードでは隠す）
+              if (_mapFilterMode != MapFilterMode.singleFriend)
+                MarkerLayer(
+                  markers: [
+                    for (final want in _wantList)
                       Marker(
-                        point: record.latLng,
-                        width: 112,
-                        height: 102,
+                        point: want.latLng,
+                        width: 110,
+                        height: 62,
                         alignment: Alignment.center,
-                        child: FriendPinMarker(
-                          friend: friend,
-                          record: record,
-                          onTap: () =>
-                              _showFriendRestaurantDetail(friend, record),
+                        child: WantPinMarker(
+                          want: want,
+                          onTap: () => _showWantDetail(want),
                         ),
                       ),
-                ],
-              ),
-
-              // ステップ⑤＆⑧：自分の登録済み飲食店ピンレイヤー（1回=銅, 2回=銀, 3回+=金＋炎, 5回+=殿堂王冠）
-              if (_showMyPins)
-                MarkerLayer(
-                  markers: _records.map((record) {
-                    final width = RestaurantPinMarker.markerWidthForCount(
-                      record.chargeCount,
-                    );
-                    final height = RestaurantPinMarker.markerHeightForCount(
-                      record.chargeCount,
-                    );
-                    return Marker(
-                      point: record.latLng,
-                      width: width,
-                      height: height,
-                      alignment: Alignment.center,
-                      child: RestaurantPinMarker(
-                        record: record,
-                        onTap: () => _showRestaurantDetail(record),
-                      ),
-                    );
-                  }).toList(),
+                  ],
                 ),
             ],
           ),
@@ -1603,6 +2032,13 @@ class _MapScreenState extends State<MapScreen>
             isSelected: false,
             activeColor: Colors.brown.shade700,
             onTap: _openShopListSheet,
+          ),
+          const SizedBox(width: 6),
+          _buildFilterPill(
+            label: '🔖 行きたい (${_wantList.length})',
+            isSelected: false,
+            activeColor: const Color(0xFF00897B),
+            onTap: _openWantListSheet,
           ),
           const SizedBox(width: 6),
           _buildFilterPill(
