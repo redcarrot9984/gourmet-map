@@ -1,0 +1,142 @@
+import 'dart:convert';
+import 'package:latlong2/latlong.dart';
+
+/// ステップ④：現在地周辺の飲食店候補モデル
+class NearbyCandidate {
+  final String id;
+  final String name;
+  final String category;
+  final double latitude;
+  final double longitude;
+  final int distanceMeters;
+  final String address;
+  final bool isMock;
+
+  const NearbyCandidate({
+    required this.id,
+    required this.name,
+    required this.category,
+    required this.latitude,
+    required this.longitude,
+    required this.distanceMeters,
+    this.address = '',
+    this.isMock = true,
+  });
+
+  LatLng get latLng => LatLng(latitude, longitude);
+}
+
+/// ステップ⑤：登録された飲食店＆リピートチャージ記録モデル
+class RestaurantRecord {
+  final String id;
+  final String name;
+  final String category;
+  final double latitude;
+  final double longitude;
+  final int chargeCount; // 来店チャージ回数（1:銅, 2:銀, 3以上:金+炎）
+  final String priceRange; // 「〜1,000円」「1,000〜2,000円」「2,000円〜」
+  final List<String> goodPoints; // 「神コスパ」「味が最高」など
+  final String? imagePath; // 撮影した写真のローカルパス
+  final String? imageBase64; // クロスプラットフォーム用Base64画像データ
+  final DateTime lastVisitedAt;
+
+  const RestaurantRecord({
+    required this.id,
+    required this.name,
+    required this.category,
+    required this.latitude,
+    required this.longitude,
+    required this.chargeCount,
+    required this.priceRange,
+    required this.goodPoints,
+    this.imagePath,
+    this.imageBase64,
+    required this.lastVisitedAt,
+  });
+
+  LatLng get latLng => LatLng(latitude, longitude);
+
+  /// ピンのランク名称を取得
+  String get rankTitle {
+    if (chargeCount >= 3) return '🔥 常連レジェンド (GOLD)';
+    if (chargeCount == 2) return '✨ リピーター (SILVER)';
+    return '🍴 初訪問 (BRONZE)';
+  }
+
+  RestaurantRecord copyWith({
+    String? id,
+    String? name,
+    String? category,
+    double? latitude,
+    double? longitude,
+    int? chargeCount,
+    String? priceRange,
+    List<String>? goodPoints,
+    String? imagePath,
+    String? imageBase64,
+    DateTime? lastVisitedAt,
+  }) {
+    return RestaurantRecord(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      chargeCount: chargeCount ?? this.chargeCount,
+      priceRange: priceRange ?? this.priceRange,
+      goodPoints: goodPoints ?? this.goodPoints,
+      imagePath: imagePath ?? this.imagePath,
+      imageBase64: imageBase64 ?? this.imageBase64,
+      lastVisitedAt: lastVisitedAt ?? this.lastVisitedAt,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'category': category,
+      'latitude': latitude,
+      'longitude': longitude,
+      'chargeCount': chargeCount,
+      'priceRange': priceRange,
+      'goodPoints': goodPoints,
+      'imagePath': imagePath,
+      'imageBase64': imageBase64,
+      'lastVisitedAt': lastVisitedAt.toIso8601String(),
+    };
+  }
+
+  factory RestaurantRecord.fromJson(Map<String, dynamic> json) {
+    return RestaurantRecord(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      category: (json['category'] as String?) ?? '飲食店',
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
+      chargeCount: (json['chargeCount'] as num?)?.toInt() ?? 1,
+      priceRange: (json['priceRange'] as String?) ?? '〜1,000円',
+      goodPoints: (json['goodPoints'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      imagePath: json['imagePath'] as String?,
+      imageBase64: json['imageBase64'] as String?,
+      lastVisitedAt: json['lastVisitedAt'] != null
+          ? DateTime.tryParse(json['lastVisitedAt'] as String) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
+  static String encodeList(List<RestaurantRecord> records) {
+    return jsonEncode(records.map((r) => r.toJson()).toList());
+  }
+
+  static List<RestaurantRecord> decodeList(String jsonString) {
+    final List<dynamic> decoded = jsonDecode(jsonString) as List<dynamic>;
+    return decoded
+        .map((item) => RestaurantRecord.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+}
+
