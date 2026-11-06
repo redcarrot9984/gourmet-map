@@ -8,7 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'models/friend_profile.dart';
 import 'models/gamification_data.dart';
 import 'models/restaurant_record.dart';
-import 'services/friend_supabase_service.dart';
+import 'services/friend_sync_service.dart';
 import 'services/restaurant_search_service.dart';
 import 'services/share_service.dart';
 import 'services/storage_service.dart';
@@ -70,7 +70,7 @@ class _MapScreenState extends State<MapScreen>
   final MapController _mapController = MapController();
   final RestaurantSearchService _searchService = RestaurantSearchService();
   final StorageService _storageService = StorageService();
-  final FriendSupabaseService _friendService = FriendSupabaseService();
+  final FriendSyncService _friendService = FriendSyncService();
 
   // 現在地状態
   LatLng? _currentLatLng;
@@ -88,8 +88,10 @@ class _MapScreenState extends State<MapScreen>
   bool _isProMember = false;
 
   // ステップ⑦：フレンド機能＆マップフィルター状態
-  String _myFriendCode = 'GM-0000';
+  String _myFriendCode = 'GM-?????-?????';
   List<FriendProfile> _friends = [];
+  bool _syncPending = false;
+  DateTime? _lastSyncAt;
   MapFilterMode _mapFilterMode = MapFilterMode.allWithFriends;
   String? _selectedFriendCode;
 
@@ -119,8 +121,36 @@ class _MapScreenState extends State<MapScreen>
   @override
   void dispose() {
     _positionStreamSubscription?.cancel();
+    _friendService.dispose();
     _pulseController.dispose();
     super.dispose();
+  }
+
+  /// 同期サービス側の状態（未送信フラグ・最終同期時刻）を画面状態へ反映
+  void _pullSyncState() {
+    _syncPending = _friendService.hasPendingSync;
+    _lastSyncAt = _friendService.lastSyncAt;
+  }
+
+  String get _syncStatusText {
+    if (_syncPending) {
+      return '未同期の変更があります（自動で再送します）';
+    }
+    final last = _lastSyncAt;
+    if (last != null) {
+      final hh = last.hour.toString().padLeft(2, '0');
+      final mm = last.minute.toString().padLeft(2, '0');
+      return '最終同期：${last.month}/${last.day} $hh:$mm';
+    }
+    return 'まだ同期していません';
+  }
+
+  /// 起動時：追加済みフレンドのマップをバックグラウンドで最新化
+  Future<void> _refreshFriendsInBackground() async {
+    final updated = await _friendService.refreshFriends();
+    if (mounted) {
+      setState(() => _friends = updated);
+    }
   }
 
   /// ローカル保存された店舗データ・ユーザー設定・フレンド情報を読み込む
@@ -130,7 +160,10 @@ class _MapScreenState extends State<MapScreen>
     final loadedCustomTitle = await _storageService.loadCustomTitle();
     final loadedThemeIdx = await _storageService.loadCardThemeIndex();
     final loadedIsPro = await _storageService.loadIsProMember();
-    final friendInit = await _friendService.initialize();
+    final friendInit = await _friendService.initialize(
+      userName: loadedName,
+      records: loadedRecords,
+    );
 
     if (mounted) {
       setState(() {
@@ -141,7 +174,9 @@ class _MapScreenState extends State<MapScreen>
         _isProMember = loadedIsPro;
         _myFriendCode = friendInit.myCode;
         _friends = friendInit.friends;
+        _pullSyncState();
       });
+      unawaited(_refreshFriendsInBackground());
     }
   }
 
@@ -361,10 +396,12 @@ class _MapScreenState extends State<MapScreen>
           onUserNameChanged: (newName) {
             setState(() => _userName = newName);
             _storageService.saveUserName(newName);
+            _friendService.scheduleSync(userName: newName, records: _records);
           },
           onCustomTitleChanged: (newTitle) {
             setState(() => _customTitle = newTitle);
             _storageService.saveCustomTitle(newTitle);
+            _friendService.scheduleSync(userName: _userName, records: _records);
           },
           onCardThemeChanged: (newIndex) {
             setState(() => _cardThemeIndex = newIndex);
@@ -460,13 +497,15 @@ class _MapScreenState extends State<MapScreen>
             return FriendManagementSheet(
               myFriendCode: _myFriendCode,
               userName: _userName,
+              syncStatusText: _syncStatusText,
               friends: _friends,
               onSyncMyMap: () async {
-                final res = await _friendService.syncMyMapToCloud(
-                  myFriendCode: _myFriendCode,
+                final res = await _friendService.syncMyMap(
                   userName: _userName,
-                  myRecords: _records,
+                  records: _records,
                 );
+                setState(() => _pullSyncState());
+                setSheetState(() {});
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -476,48 +515,124 @@ class _MapScreenState extends State<MapScreen>
                   );
                 }
               },
-              onAddFriendByCode: (code) async {
-                try {
-                  final res = await _friendService.addFriendByCode(
-                    friendCodeInput: code,
-                    baseLatLng: _activeBaseLatLng,
-                  );
+              onReissueCode: () async {
+                final res = await _friendService.reissueMyCode(
+                  userName: _userName,
+                  records: _records,
+                );
+                if (res.newCode != null) {
                   setState(() {
-                    _friends = res.allFriends;
-                    _mapFilterMode = MapFilterMode.allWithFriends;
-                    _selectedFriendCode = null;
+                    _myFriendCode = res.newCode!;
+                    _pullSyncState();
                   });
                   setSheetState(() {});
+                }
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(res.message),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+                return res.newCode != null;
+              },
+              onRefreshFriends: () async {
+                final updated = await _friendService.refreshFriends();
+                setState(() => _friends = updated);
+                setSheetState(() {});
+              },
+              onAddSampleFriend: (code) async {
+                final res = await _friendService.addSampleFriend(
+                  sampleCode: code,
+                  baseLatLng: _activeBaseLatLng,
+                );
+                setState(() {
+                  _friends = res.allFriends;
+                  _mapFilterMode = MapFilterMode.allWithFriends;
+                  _selectedFriendCode = null;
+                });
+                setSheetState(() {});
+                if (res.friend.records.isNotEmpty) {
+                  _mapController.move(res.friend.records.first.latLng, 16.3);
+                }
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '🧪 サンプル「${res.friend.avatarEmoji}${res.friend.displayName}」のマップを表示しました（体験用です）',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      backgroundColor: res.friend.themeColor,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+                return true;
+              },
+              onAddFriendByCode: (code) async {
+                final res = await _friendService.addFriendByCode(code);
 
-                  if (res.friend.records.isNotEmpty) {
-                    _mapController.move(
-                      res.friend.records.first.latLng,
-                      16.3,
-                    );
-                  }
-
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          '👥 フレンド「${res.friend.avatarEmoji}${res.friend.displayName}」のマップ（${res.friend.records.length}店舗）を共有表示しました！',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                switch (res.status) {
+                  case FriendFetchStatus.found:
+                    final friend = res.friend!;
+                    setState(() {
+                      _friends = res.allFriends;
+                      _mapFilterMode = MapFilterMode.allWithFriends;
+                      _selectedFriendCode = null;
+                    });
+                    setSheetState(() {});
+                    if (friend.records.isNotEmpty) {
+                      _mapController.move(friend.records.first.latLng, 16.3);
+                    }
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '👥 フレンド「${friend.avatarEmoji}${friend.displayName}」のマップ（${friend.records.length}店舗）を共有表示しました！',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          backgroundColor: friend.themeColor,
+                          behavior: SnackBarBehavior.floating,
                         ),
-                        backgroundColor: res.friend.themeColor,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(e.toString()),
-                        backgroundColor: Colors.redAccent,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
+                      );
+                    }
+                    return true;
+                  case FriendFetchStatus.notFound:
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('そのコードのフレンドは見つかりませんでした。コードを確認してください。'),
+                          backgroundColor: Colors.redAccent,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                    return false;
+                  case FriendFetchStatus.invalidFormat:
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'フレンドコードの形式が違います（例: GM-ABCDE-23456）。自分のコードは追加できません。'),
+                          backgroundColor: Colors.redAccent,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                    return false;
+                  case FriendFetchStatus.offline:
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content:
+                              Text('通信できなかったため確認できませんでした。電波の良い場所で再試行してください。'),
+                          backgroundColor: Colors.redAccent,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                    return false;
                 }
               },
               onRemoveFriend: (code) async {
@@ -604,15 +719,8 @@ class _MapScreenState extends State<MapScreen>
       friends: _friends,
     );
 
-    if (FriendSupabaseService.isCloudConfigured) {
-      unawaited(
-        _friendService.syncMyMapToCloud(
-          myFriendCode: _myFriendCode,
-          userName: _userName,
-          myRecords: _records,
-        ),
-      );
-    }
+    // フレンド機能 v2：記録の変更は自動でクラウド同期（デバウンス付き）
+    _friendService.scheduleSync(userName: _userName, records: _records);
 
     // 登録・チャージした店舗の座標へカメラを移動
     _mapController.move(result.record.latLng, 17.0);
@@ -660,6 +768,10 @@ class _MapScreenState extends State<MapScreen>
             final updated = await _storageService.deleteRecord(record.id);
             if (mounted) {
               setState(() => _records = updated);
+              _friendService.scheduleSync(
+                userName: _userName,
+                records: updated,
+              );
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('「${record.name}」の記録を削除しました'),
@@ -1024,9 +1136,8 @@ class _MapScreenState extends State<MapScreen>
           ),
         ],
         border: Border.all(
-          color: _isProMember
-              ? const Color(0xFFFFD700)
-              : Colors.orange.shade100,
+          color:
+              _isProMember ? const Color(0xFFFFD700) : Colors.orange.shade100,
           width: 1.5,
         ),
       ),
@@ -1266,8 +1377,9 @@ class _MapScreenState extends State<MapScreen>
                           : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color:
-                            _isLiveTracking ? Colors.green : Colors.grey.shade400,
+                        color: _isLiveTracking
+                            ? Colors.green
+                            : Colors.grey.shade400,
                       ),
                     ),
                     child: Text(
@@ -1285,7 +1397,8 @@ class _MapScreenState extends State<MapScreen>
                 const SizedBox(width: 6),
                 InkWell(
                   onTap: _showApiSettingsDialog,
-                  child: const Icon(Icons.tune, size: 17, color: Colors.black54),
+                  child:
+                      const Icon(Icons.tune, size: 17, color: Colors.black54),
                 ),
                 const SizedBox(width: 6),
                 InkWell(
@@ -1301,7 +1414,8 @@ class _MapScreenState extends State<MapScreen>
                       ),
                     );
                   },
-                  child: const Icon(Icons.copy, size: 16, color: Colors.black54),
+                  child:
+                      const Icon(Icons.copy, size: 16, color: Colors.black54),
                 ),
               ],
             ),
@@ -1376,8 +1490,7 @@ class _MapScreenState extends State<MapScreen>
                       borderRadius: BorderRadius.circular(26),
                     ),
                   ),
-                  onPressed:
-                      _isSearchingShops ? null : _openQuickRegisterSheet,
+                  onPressed: _isSearchingShops ? null : _openQuickRegisterSheet,
                   icon: _isSearchingShops
                       ? const SizedBox(
                           width: 18,
