@@ -18,6 +18,7 @@ class FriendProfile {
   final int colorValue; // 識別用テーマカラー
   final List<RestaurantRecord> records; // フレンドの登録店舗リスト
   final DateTime syncedAt;
+  final bool isSample; // 体験用サンプル（実在の利用者ではない）かどうか
 
   const FriendProfile({
     required this.friendCode,
@@ -27,6 +28,7 @@ class FriendProfile {
     required this.colorValue,
     required this.records,
     required this.syncedAt,
+    this.isSample = false,
   });
 
   Color get themeColor => Color(colorValue);
@@ -44,6 +46,7 @@ class FriendProfile {
     int? colorValue,
     List<RestaurantRecord>? records,
     DateTime? syncedAt,
+    bool? isSample,
   }) {
     return FriendProfile(
       friendCode: friendCode ?? this.friendCode,
@@ -53,6 +56,7 @@ class FriendProfile {
       colorValue: colorValue ?? this.colorValue,
       records: records ?? this.records,
       syncedAt: syncedAt ?? this.syncedAt,
+      isSample: isSample ?? this.isSample,
     );
   }
 
@@ -65,6 +69,7 @@ class FriendProfile {
       'colorValue': colorValue,
       'records': records.map((r) => r.toJson()).toList(),
       'syncedAt': syncedAt.toIso8601String(),
+      'isSample': isSample,
     };
   }
 
@@ -82,6 +87,7 @@ class FriendProfile {
       syncedAt: json['syncedAt'] != null
           ? DateTime.tryParse(json['syncedAt'] as String) ?? DateTime.now()
           : DateTime.now(),
+      isSample: (json['isSample'] as bool?) ?? false,
     );
   }
 
@@ -96,4 +102,3 @@ class FriendProfile {
         .toList();
   }
 }
-

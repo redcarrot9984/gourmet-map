@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/friend_profile.dart';
-import '../services/friend_supabase_service.dart';
+import '../services/friend_sync_service.dart';
 import '../services/share_service.dart';
 
-/// ステップ⑦：フレンド機能・Supabaseクラウド同期・友達のマップ共有ボトムシート
+/// フレンド機能 v2：クラウド自動同期＆マップ共有ボトムシート。
+/// 接続設定は不要（開発者の Supabase へ自動接続）。利用者は自分のコードを
+/// 渡す／相手のコードを入れるだけでよい。
 class FriendManagementSheet extends StatefulWidget {
   final String myFriendCode;
   final String userName;
+  final String syncStatusText;
   final List<FriendProfile> friends;
   final Future<void> Function() onSyncMyMap;
-  final Future<void> Function(String code) onAddFriendByCode;
+  final Future<bool> Function() onReissueCode;
+  final Future<void> Function() onRefreshFriends;
+  final Future<bool> Function(String code) onAddFriendByCode;
+  final Future<bool> Function(String code) onAddSampleFriend;
   final Future<void> Function(String code) onRemoveFriend;
   final ValueChanged<FriendProfile> onSelectFriendMap;
   final VoidCallback onShowAllFriendsMap;
@@ -19,9 +25,13 @@ class FriendManagementSheet extends StatefulWidget {
     super.key,
     required this.myFriendCode,
     required this.userName,
+    required this.syncStatusText,
     required this.friends,
     required this.onSyncMyMap,
+    required this.onReissueCode,
+    required this.onRefreshFriends,
     required this.onAddFriendByCode,
+    required this.onAddSampleFriend,
     required this.onRemoveFriend,
     required this.onSelectFriendMap,
     required this.onShowAllFriendsMap,
@@ -35,12 +45,7 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
   final TextEditingController _codeController = TextEditingController();
   bool _isSyncing = false;
   bool _isAdding = false;
-
-  static const List<({String code, String label})> _presetFriends = [
-    (code: 'GM-1029', label: '🍜 メンマ先輩 (GM-1029)'),
-    (code: 'GM-4410', label: '☕ カフェ巡り葵 (GM-4410)'),
-    (code: 'GM-8831', label: '🥩 肉とスパイスの健 (GM-8831)'),
-  ];
+  bool _isRefreshing = false;
 
   @override
   void dispose() {
@@ -52,8 +57,10 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
     if (code.trim().isEmpty || _isAdding) return;
     setState(() => _isAdding = true);
     try {
-      await widget.onAddFriendByCode(code.trim());
-      _codeController.clear();
+      final added = await widget.onAddFriendByCode(code.trim());
+      if (added) {
+        _codeController.clear();
+      }
     } finally {
       if (mounted) {
         setState(() => _isAdding = false);
@@ -73,106 +80,49 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
     }
   }
 
-  /// Supabase接続情報（URL / Anon Key）＆ SQL確認ダイアログ
-  void _showSupabaseConfigDialog() {
-    final urlCtrl =
-        TextEditingController(text: FriendSupabaseService.supabaseUrl);
-    final keyCtrl =
-        TextEditingController(text: FriendSupabaseService.supabaseAnonKey);
+  Future<void> _handleRefresh() async {
+    if (_isRefreshing) return;
+    setState(() => _isRefreshing = true);
+    try {
+      await widget.onRefreshFriends();
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshing = false);
+      }
+    }
+  }
 
-    showDialog<void>(
+  /// コード再発行の確認ダイアログ（旧コードは無効になる）。
+  Future<void> _confirmReissueCode() async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) {
         return AlertDialog(
           title: const Text(
-            'Supabase クラウド連携設定',
-            style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.bold),
+            'フレンドコードを再発行しますか？',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'SupabaseのProject URLとAnon Keyを設定すると、実データベース（shared_mapsテーブル）を介して全国の友達とリアルタイムでマップ共有できます。\n※未設定でもサンプル友達やコード入力でローカル共有テストが可能です。',
-                  style: TextStyle(fontSize: 12, color: Colors.black87),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: urlCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Supabase Project URL',
-                    hintText: 'https://xxxx.supabase.co',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: keyCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Supabase Anon Key',
-                    hintText: 'eyJhbGciOiJIUzI1NiIsInR5cCI...',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Clipboard.setData(
-                      const ClipboardData(
-                        text: FriendSupabaseService.supabaseSetupSql,
-                      ),
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Supabase SQL Editor用のテーブル作成SQLをコピーしました'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.copy, size: 16),
-                  label: const Text(
-                    'テーブル作成SQLをコピー',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
+          content: const Text(
+            '新しいコードが発行され、今のコードは使えなくなります。\n'
+            'すでにコードを渡した相手には、新しいコードを伝え直してください。',
+            style: TextStyle(fontSize: 13),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
+              onPressed: () => Navigator.of(ctx).pop(false),
               child: const Text('キャンセル'),
             ),
             FilledButton(
-              onPressed: () async {
-                await FriendSupabaseService().saveSupabaseCredentials(
-                  url: urlCtrl.text,
-                  anonKey: keyCtrl.text,
-                );
-                if (ctx.mounted) {
-                  Navigator.of(ctx).pop();
-                }
-                if (mounted) {
-                  setState(() {});
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        FriendSupabaseService.isCloudConfigured
-                            ? '☁️ Supabaseクラウド連携を有効化しました！'
-                            : 'デモ共有モードに設定しました',
-                      ),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              },
-              child: const Text('保存'),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('再発行する'),
             ),
           ],
         );
       },
     );
+    if (confirmed == true) {
+      await widget.onReissueCode();
+    }
   }
 
   @override
@@ -193,7 +143,7 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ハンドル
+// ハンドル
             Center(
               child: Container(
                 width: 44,
@@ -206,7 +156,7 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
             ),
             const SizedBox(height: 10),
 
-            // ヘッダー
+// ヘッダー
             Row(
               children: [
                 Container(
@@ -222,11 +172,11 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'フレンド機能 ＆ マップ共有',
                         style: TextStyle(
                           fontSize: 18,
@@ -234,24 +184,15 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                         ),
                       ),
                       Text(
-                        FriendSupabaseService.isCloudConfigured
-                            ? '☁️ Supabaseクラウド接続中'
-                            : '⚡ 即時テスト対応（Supabase設定も可）',
+                        '☁️ クラウド自動同期（設定は不要です）',
                         style: TextStyle(
                           fontSize: 11.5,
-                          color: FriendSupabaseService.isCloudConfigured
-                              ? Colors.green.shade700
-                              : Colors.black54,
+                          color: Colors.black54,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
-                ),
-                IconButton(
-                  onPressed: _showSupabaseConfigDialog,
-                  tooltip: 'Supabase接続設定',
-                  icon: const Icon(Icons.cloud_queue, color: Color(0xFF7B1FA2)),
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
@@ -261,7 +202,7 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
             ),
             const Divider(height: 18),
 
-            // 1. 自分のフレンドコード＆マップ同期カード
+// 1. 自分のフレンドコード＆同期状態カード
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -292,10 +233,10 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                             widget.myFriendCode,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 22,
+                              fontSize: 20,
                               fontFamily: 'monospace',
                               fontWeight: FontWeight.w900,
-                              letterSpacing: 1.5,
+                              letterSpacing: 1.2,
                             ),
                           ),
                         ],
@@ -320,9 +261,9 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                           ),
                           IconButton(
                             onPressed: () {
-                              final inviteText =
-                                  '🍴 グルメマップで私の常連店マップを共有中！\n'
-                                  'フレンドコード：【${widget.myFriendCode}】\n'
+                              final code = widget.myFriendCode;
+                              final inviteText = '🍴 グルメマップで私の常連店マップを共有中！\n'
+                                  'フレンドコード：【$code】\n'
                                   'アプリでコードを入力してマップを見てね！ #グルメマップ';
                               ShareService.shareTextOnly(inviteText);
                             },
@@ -332,6 +273,14 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                         ],
                       ),
                     ],
+                  ),
+                  Text(
+                    widget.syncStatusText,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   SizedBox(
@@ -354,13 +303,25 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                             )
                           : const Icon(Icons.cloud_upload_outlined, size: 18),
                       label: Text(
-                        _isSyncing
-                            ? '同期中...'
-                            : '自分の最新マップをクラウド同期して公開',
+                        _isSyncing ? '同期中...' : '今すぐ同期する',
                         style: const TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w900,
                         ),
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _confirmReissueCode,
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      child: const Text(
+                        'コードを再発行する（旧コードは無効化）',
+                        style: TextStyle(fontSize: 11),
                       ),
                     ),
                   ),
@@ -370,7 +331,7 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
 
             const SizedBox(height: 16),
 
-            // 2. フレンドコードで友達を追加
+// 2. フレンドコードで友達を追加
             const Text(
               'フレンドコードを入力して友達のマップを追加',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
@@ -383,7 +344,7 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                     controller: _codeController,
                     textCapitalization: TextCapitalization.characters,
                     decoration: InputDecoration(
-                      hintText: '例: GM-1029',
+                      hintText: '例: GM-ABCDE-23456',
                       prefixIcon: const Icon(Icons.person_search),
                       filled: true,
                       fillColor: Colors.grey.shade100,
@@ -423,9 +384,9 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
 
             const SizedBox(height: 10),
 
-            // ワンタップで試せるプリセット友達チップ
+// サンプル友達（体験用・端末内のみ。実在の利用者ではない）
             const Text(
-              '✨ ワンタップで試せるサンプル友達（現在地周辺にピンが出現します）：',
+              '🧪 サンプル友達（体験用・端末内だけの表示です）：',
               style: TextStyle(
                 fontSize: 11.5,
                 color: Colors.black54,
@@ -436,12 +397,14 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
             Wrap(
               spacing: 8,
               runSpacing: 6,
-              children: _presetFriends.map((preset) {
+              children: SampleFriends.presets.map((preset) {
                 final alreadyAdded =
                     widget.friends.any((f) => f.friendCode == preset.code);
                 return ActionChip(
                   avatar: Icon(
-                    alreadyAdded ? Icons.check_circle : Icons.add_circle_outline,
+                    alreadyAdded
+                        ? Icons.check_circle
+                        : Icons.add_circle_outline,
                     size: 16,
                     color: alreadyAdded
                         ? Colors.green.shade700
@@ -462,7 +425,7 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                       : Colors.purple.shade50,
                   onPressed: () async {
                     final nav = Navigator.of(context);
-                    await _handleAddCode(preset.code);
+                    await widget.onAddSampleFriend(preset.code);
                     if (mounted) {
                       nav.pop();
                     }
@@ -473,7 +436,7 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
 
             const SizedBox(height: 16),
 
-            // 3. 追加済みフレンド一覧
+// 3. 追加済みフレンド一覧
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -484,21 +447,38 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                     fontSize: 13.5,
                   ),
                 ),
-                if (widget.friends.isNotEmpty)
-                  TextButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      widget.onShowAllFriendsMap();
-                    },
-                    icon: const Icon(Icons.layers, size: 16),
-                    label: const Text(
-                      '全員のピンを重ねて見る',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: _isRefreshing ? null : _handleRefresh,
+                      tooltip: 'フレンドのマップを最新に更新',
+                      visualDensity: VisualDensity.compact,
+                      icon: _isRefreshing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.refresh, size: 19),
                     ),
-                  ),
+                    if (widget.friends.isNotEmpty)
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          widget.onShowAllFriendsMap();
+                        },
+                        icon: const Icon(Icons.layers, size: 16),
+                        label: const Text(
+                          '全員のピンを重ねて見る',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 6),
@@ -513,7 +493,7 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                   border: Border.all(color: Colors.grey.shade200),
                 ),
                 child: const Text(
-                  'まだフレンドが追加されていません。\n上の「サンプル友達」をタップすると、すぐに友達のマップ共有を体験できます！',
+                  'まだフレンドが追加されていません。\n友達のフレンドコードを入力するか、上の「サンプル友達」で体験できます。',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12, color: Colors.black54),
                 ),
@@ -536,7 +516,8 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                       vertical: 4,
                     ),
                     leading: CircleAvatar(
-                      backgroundColor: friend.themeColor.withValues(alpha: 0.15),
+                      backgroundColor:
+                          friend.themeColor.withValues(alpha: 0.15),
                       child: Text(
                         friend.avatarEmoji,
                         style: const TextStyle(fontSize: 20),
@@ -572,6 +553,27 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                             ),
                           ),
                         ),
+                        if (friend.isSample) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'サンプル',
+                              style: TextStyle(
+                                color: Colors.orange.shade900,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     subtitle: Text(
