@@ -10,13 +10,11 @@
 .svn/
 migrate_working_dir/
 
-# IntelliJ related
+# IntelliJ / Android Studio / VS Code
 *.iml
 *.ipr
 *.iws
 .idea/
-
-# The .vscode string covers a flare of patterns:
 .vscode/
 
 # Flutter/Dart/Pub related
@@ -29,25 +27,25 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+build/
 
-# Symbol processing related to production builds.
+# Symbol processing related to production builds
 app.*.symbols
 
 # Coverage information
 coverage/
 
-# Android Studio will create this file on each repository checkout
+# Android related
 .android/
 **/android/local.properties
-**/android/.gradle
+**/android/.gradle/
 **/android/captures/
 **/android/gradlew
 **/android/gradlew.bat
-**/android/local.properties
 **/android/**/generated/
 **/android/**/build/
 
-# iOS/XCode
+# iOS/Xcode related
 **/ios/**/*.mode1v3
 **/ios/**/*.mode2v3
 **/ios/**/*.moved-aside
@@ -68,16 +66,9 @@ coverage/
 **/ios/Flutter/Flutter.framework
 **/ios/Flutter/Flutter.podspec
 **/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
 **/ios/Flutter/app.flx
 **/ios/Flutter/app.zip
 **/ios/Flutter/flutter_assets/
 **/ios/ServiceDefinitions.json
 **/ios/Runner/GeneratedPluginRegistrant.*
-
-# Exceptions to above rules.
-!**/ios/**/default.mode1v3
-!**/ios/**/default.mode2v3
-!**/ios/**/default.pbxuser
-!**/ios/**/default.perspectivev3
-!/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
-
