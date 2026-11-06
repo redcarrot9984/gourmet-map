@@ -9,11 +9,15 @@ class FriendRestaurantDetailSheet extends StatelessWidget {
   final RestaurantRecord record;
   final VoidCallback onImportToMyMap;
 
+  /// N2：行きたいリストへの追加（サンプルフレンドでは null で非表示）。
+  final VoidCallback? onAddToWantList;
+
   const FriendRestaurantDetailSheet({
     super.key,
     required this.friend,
     required this.record,
     required this.onImportToMyMap,
+    this.onAddToWantList,
   });
 
   @override
@@ -175,8 +179,7 @@ class FriendRestaurantDetailSheet extends StatelessWidget {
                     ),
                   ),
                   onPressed: () {
-                    final text =
-                        '🍴 フレンド【${friend.displayName}】さんのおすすめ店！\n'
+                    final text = '🍴 フレンド【${friend.displayName}】さんのおすすめ店！\n'
                         '「${record.name}」（${record.category} / チャージ${record.chargeCount}回）\n'
                         '#グルメマップ #友達のグルメマップ';
                     ShareService.postToX(text);
@@ -189,9 +192,35 @@ class FriendRestaurantDetailSheet extends StatelessWidget {
               ),
             ],
           ),
+
+          // N2：フレンドの店を自分の「行きたいリスト」へ追加
+          if (onAddToWantList != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF00695C),
+                  side: const BorderSide(color: Color(0xFF00897B), width: 1.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  onAddToWantList!();
+                },
+                icon: const Icon(Icons.bookmark_add_outlined, size: 19),
+                label: const Text(
+                  '行きたいリストに追加',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
-

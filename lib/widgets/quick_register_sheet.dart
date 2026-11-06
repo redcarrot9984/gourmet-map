@@ -22,12 +22,16 @@ class QuickRegisterSheet extends StatefulWidget {
     String? imageBase64,
   }) onSubmit;
 
+  /// N1：候補を「行きたいリスト」へ追加する（任意）。
+  final Future<bool> Function(NearbyCandidate candidate)? onAddToWantList;
+
   const QuickRegisterSheet({
     super.key,
     required this.candidates,
     required this.existingRecords,
     required this.currentLatLng,
     required this.onSubmit,
+    this.onAddToWantList,
   });
 
   @override
@@ -62,6 +66,9 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
   String? _imageBase64;
   Uint8List? _imageBytes;
   bool _isSaving = false;
+
+  // N1：このシート内で「行きたい」に追加済みの候補ID
+  final Set<String> _wantAddedIds = {};
 
   @override
   void initState() {
@@ -404,7 +411,8 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: Colors.white,
-                                          borderRadius: BorderRadius.circular(6),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
                                           border: Border.all(
                                             color: Colors.grey.shade300,
                                           ),
@@ -453,6 +461,31 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                                 ),
                               ),
                             ),
+                            // N1：未登録の候補は「行きたい」に追加できる
+                            if (widget.onAddToWantList != null &&
+                                currentCount == 0)
+                              IconButton(
+                                visualDensity: VisualDensity.compact,
+                                tooltip: _wantAddedIds.contains(candidate.id)
+                                    ? '行きたいリストに追加済み'
+                                    : '行きたいリストに追加',
+                                icon: Icon(
+                                  _wantAddedIds.contains(candidate.id)
+                                      ? Icons.bookmark
+                                      : Icons.bookmark_add_outlined,
+                                  color: const Color(0xFF00897B),
+                                  size: 21,
+                                ),
+                                onPressed: () async {
+                                  final added =
+                                      await widget.onAddToWantList!(candidate);
+                                  if (added && mounted) {
+                                    setState(() {
+                                      _wantAddedIds.add(candidate.id);
+                                    });
+                                  }
+                                },
+                              ),
                           ],
                         ),
                       ),
@@ -504,7 +537,8 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.refresh, color: Colors.white, size: 16),
+                              Icon(Icons.refresh,
+                                  color: Colors.white, size: 16),
                               SizedBox(width: 4),
                               Text(
                                 '撮り直す',
@@ -538,7 +572,8 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                         ),
                       ),
                       onPressed: () => _pickPhoto(ImageSource.camera),
-                      icon: const Icon(Icons.camera_alt, color: Color(0xFFFF5722)),
+                      icon: const Icon(Icons.camera_alt,
+                          color: Color(0xFFFF5722)),
                       label: const Text(
                         'カメラで撮影',
                         style: TextStyle(
@@ -628,9 +663,8 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.bold,
-                      color: isSelected
-                          ? const Color(0xFFD84315)
-                          : Colors.black87,
+                      color:
+                          isSelected ? const Color(0xFFD84315) : Colors.black87,
                     ),
                   ),
                   selected: isSelected,
@@ -697,4 +731,3 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
     );
   }
 }
-
