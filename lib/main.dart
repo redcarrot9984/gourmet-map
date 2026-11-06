@@ -9,10 +9,13 @@ import 'models/friend_profile.dart';
 import 'models/gamification_data.dart';
 import 'models/restaurant_record.dart';
 import 'services/friend_sync_service.dart';
+import 'utils/pin_grouping.dart';
 import 'services/restaurant_search_service.dart';
 import 'services/share_service.dart';
 import 'services/storage_service.dart';
 import 'widgets/charge_celebration_dialog.dart';
+import 'widgets/cluster_pin_marker.dart';
+import 'widgets/merged_pin_marker.dart';
 import 'widgets/friend_management_sheet.dart';
 import 'widgets/friend_pin_marker.dart';
 import 'widgets/friend_restaurant_detail_sheet.dart';
@@ -92,6 +95,9 @@ class _MapScreenState extends State<MapScreen>
   List<FriendProfile> _friends = [];
   bool _syncPending = false;
   DateTime? _lastSyncAt;
+
+  // F2：クラスタリング判定用の現在ズーム
+  double _currentZoom = 16.0;
   MapFilterMode _mapFilterMode = MapFilterMode.allWithFriends;
   String? _selectedFriendCode;
 
@@ -785,6 +791,177 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
+  /// F1/F2：自分とフレンドの店舗ピンを構築する。
+  /// 近い場所のピンは合体ピンにまとめ、ズームアウト時はクラスタ化する。
+  List<Marker> _buildShopMarkers(List<FriendProfile> visibleFriends) {
+    final entries = <PinEntry>[
+      if (_showMyPins)
+        for (final record in _records) PinEntry(record: record),
+      for (final friend in visibleFriends)
+        for (final record in friend.records)
+          PinEntry(record: record, friend: friend),
+    ];
+    final groups = groupPins(entries);
+
+    if (clusteringEnabled(_currentZoom)) {
+      final cells = clusterGroups(
+        groups,
+        clusterCellDegreesForZoom(_currentZoom),
+      );
+      return [
+        for (final cell in cells)
+          if (cell.length == 1)
+            _markerForGroup(cell.first)
+          else
+            Marker(
+              point: clusterCenter(cell),
+              width: 62,
+              height: 62,
+              alignment: Alignment.center,
+              child: ClusterPinMarker(
+                shopCount:
+                    cell.fold<int>(0, (sum, g) => sum + g.entries.length),
+                onTap: () {
+                  _mapController.move(
+                    clusterCenter(cell),
+                    (_currentZoom + 2).clamp(3.0, 17.5),
+                  );
+                },
+              ),
+            ),
+      ];
+    }
+
+    return [for (final group in groups) _markerForGroup(group)];
+  }
+
+  /// グループ1件分のマーカー（単体なら通常ピン、複数なら合体ピン）。
+  Marker _markerForGroup(PinGroup group) {
+    if (!group.isMerged) {
+      final entry = group.entries.first;
+      if (entry.isMine) {
+        final record = entry.record;
+        return Marker(
+          point: record.latLng,
+          width: RestaurantPinMarker.markerWidthForCount(record.chargeCount),
+          height: RestaurantPinMarker.markerHeightForCount(record.chargeCount),
+          alignment: Alignment.center,
+          child: RestaurantPinMarker(
+            record: record,
+            onTap: () => _showRestaurantDetail(record),
+          ),
+        );
+      }
+      final friend = entry.friend!;
+      final record = entry.record;
+      return Marker(
+        point: record.latLng,
+        width: 112,
+        height: 102,
+        alignment: Alignment.center,
+        child: FriendPinMarker(
+          friend: friend,
+          record: record,
+          onTap: () => _showFriendRestaurantDetail(friend, record),
+        ),
+      );
+    }
+
+    return Marker(
+      point: group.point,
+      width: 120,
+      height: 92,
+      alignment: Alignment.center,
+      child: MergedPinMarker(
+        group: group,
+        onTap: () => _showPinGroupChooser(group),
+      ),
+    );
+  }
+
+  /// F1：合体ピンをタップしたときの選択シート（自分の記録／フレンドの記録）。
+  void _showPinGroupChooser(PinGroup group) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'この場所のお店',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '見たい記録を選んでください',
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+              const SizedBox(height: 10),
+              for (final entry in group.entries)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: entry.isMine
+                        ? const Color(0xFFFF5722)
+                        : entry.friend!.themeColor,
+                    child: Text(
+                      entry.isMine ? '自' : entry.friend!.avatarEmoji,
+                      style: TextStyle(
+                        color: entry.isMine ? Colors.white : null,
+                        fontSize: entry.isMine ? 13 : 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    entry.record.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    entry.isMine
+                        ? '自分の記録 • チャージ${entry.record.chargeCount}回'
+                        : '${entry.friend!.displayName}さんの記録 • チャージ${entry.record.chargeCount}回',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    if (entry.isMine) {
+                      _showRestaurantDetail(entry.record);
+                    } else {
+                      _showFriendRestaurantDetail(
+                        entry.friend!,
+                        entry.record,
+                      );
+                    }
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   /// マップ上の「フレンドの店舗ピン」をタップした際の詳細シートを表示
   void _showFriendRestaurantDetail(
     FriendProfile friend,
@@ -908,11 +1085,16 @@ class _MapScreenState extends State<MapScreen>
           // 1. 地図表示（flutter_map + OpenStreetMap）
           FlutterMap(
             mapController: _mapController,
-            options: const MapOptions(
+            options: MapOptions(
               initialCenter: _tokyoStation,
               initialZoom: 16.0,
               minZoom: 3.0,
               maxZoom: 19.0,
+              onPositionChanged: (camera, hasGesture) {
+                if ((camera.zoom - _currentZoom).abs() > 0.05) {
+                  setState(() => _currentZoom = camera.zoom);
+                }
+              },
             ),
             children: [
               TileLayer(
@@ -972,48 +1154,9 @@ class _MapScreenState extends State<MapScreen>
                 ],
               ),
 
-              // ステップ⑦：フレンドの共有店舗ピンレイヤー
-              MarkerLayer(
-                markers: [
-                  for (final friend in visibleFriends)
-                    for (final record in friend.records)
-                      Marker(
-                        point: record.latLng,
-                        width: 112,
-                        height: 102,
-                        alignment: Alignment.center,
-                        child: FriendPinMarker(
-                          friend: friend,
-                          record: record,
-                          onTap: () =>
-                              _showFriendRestaurantDetail(friend, record),
-                        ),
-                      ),
-                ],
-              ),
-
-              // ステップ⑤＆⑧：自分の登録済み飲食店ピンレイヤー（1回=銅, 2回=銀, 3回+=金＋炎, 5回+=殿堂王冠）
-              if (_showMyPins)
-                MarkerLayer(
-                  markers: _records.map((record) {
-                    final width = RestaurantPinMarker.markerWidthForCount(
-                      record.chargeCount,
-                    );
-                    final height = RestaurantPinMarker.markerHeightForCount(
-                      record.chargeCount,
-                    );
-                    return Marker(
-                      point: record.latLng,
-                      width: width,
-                      height: height,
-                      alignment: Alignment.center,
-                      child: RestaurantPinMarker(
-                        record: record,
-                        onTap: () => _showRestaurantDetail(record),
-                      ),
-                    );
-                  }).toList(),
-                ),
+              // F1/F2：自分＋フレンドの店舗ピンを統合レイヤーで表示
+              // （同一地点は合体ピン、ズームアウト時はクラスタピンに集約）
+              MarkerLayer(markers: _buildShopMarkers(visibleFriends)),
             ],
           ),
 
