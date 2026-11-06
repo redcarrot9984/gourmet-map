@@ -9,11 +9,15 @@ class RestaurantDetailSheet extends StatefulWidget {
   final VoidCallback onQuickCharge;
   final VoidCallback onDelete;
 
+  /// この店をフレンドへ共有するかの切り替え（店ごとの共有設定）。
+  final void Function(bool value)? onToggleShared;
+
   const RestaurantDetailSheet({
     super.key,
     required this.record,
     required this.onQuickCharge,
     required this.onDelete,
+    this.onToggleShared,
   });
 
   @override
@@ -23,6 +27,7 @@ class RestaurantDetailSheet extends StatefulWidget {
 class _RestaurantDetailSheetState extends State<RestaurantDetailSheet> {
   final GlobalKey _shopCardBoundaryKey = GlobalKey();
   bool _isSharing = false;
+  late bool _isShared = widget.record.isShared;
 
   Future<void> _handlePostToX() async {
     final text = ShareService.buildRestaurantShareText(widget.record);
@@ -240,6 +245,30 @@ class _RestaurantDetailSheetState extends State<RestaurantDetailSheet> {
                       const SizedBox(height: 12),
                     ],
 
+                    // 一言コメント
+                    if (record.comment.isNotEmpty) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF8E1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFFFE082)),
+                        ),
+                        child: Text(
+                          '💬 ${record.comment}',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+
                     // 良かった点タグ一覧
                     if (record.goodPoints.isNotEmpty)
                       Wrap(
@@ -273,6 +302,26 @@ class _RestaurantDetailSheetState extends State<RestaurantDetailSheet> {
             ),
 
             const SizedBox(height: 16),
+
+            // 店ごとのフレンド共有ON/OFF
+            if (widget.onToggleShared != null)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: const Text(
+                  '👥 フレンドにこの店を共有する',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  _isShared ? 'フレンドの地図にも表示されます' : 'フレンドには表示されません（自分だけの記録）',
+                  style: const TextStyle(fontSize: 11),
+                ),
+                value: _isShared,
+                onChanged: (value) {
+                  setState(() => _isShared = value);
+                  widget.onToggleShared!(value);
+                },
+              ),
 
             // ====== ステップ⑥：X（旧Twitter）投稿 ＆ 他アプリへのカード画像シェアボタン ======
             Row(

@@ -89,6 +89,7 @@ void main() {
         'chargeCount',
         'priceRange',
         'goodPoints',
+        'comment',
       });
     });
 

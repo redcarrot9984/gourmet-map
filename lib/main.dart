@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'models/friend_profile.dart';
 import 'models/want_to_visit.dart';
@@ -337,11 +338,16 @@ class _MapScreenState extends State<MapScreen>
   }
 
   /// 行きたい店の場所へ移動して、登録シートを開く。
+  /// 店名は行きたいリストの名前を引き継ぐ（検索に出ない店でも
+  /// 登録名がぶれにくくなる）。
   Future<void> _registerAtWant(WantToVisit want) async {
     _mapController.move(want.latLng, 17.2);
     await Future<void>.delayed(const Duration(milliseconds: 350));
     if (mounted) {
-      await _openQuickRegisterSheet();
+      await _openQuickRegisterSheet(
+        targetLatLng: want.latLng,
+        initialName: want.name,
+      );
     }
   }
 
@@ -578,17 +584,23 @@ class _MapScreenState extends State<MapScreen>
   }
 
   /// ステップ④＆⑤：「＋ 店を登録（カメラ）」ボタンを押したときの処理
-  Future<void> _openQuickRegisterSheet() async {
+  /// [targetLatLng] を指定するとその場所周辺を検索する（再訪・行きたい登録用）。
+  /// [initialName] は店名の初期値（行きたいリストの名前を引き継ぎ、
+  /// 人によって違う名前で登録してしまう問題を防ぐ）。
+  Future<void> _openQuickRegisterSheet({
+    LatLng? targetLatLng,
+    String? initialName,
+  }) async {
     if (_isSearchingShops) return;
     setState(() => _isSearchingShops = true);
 
-    final targetLatLng = _activeBaseLatLng;
+    final LatLng effectiveTarget = targetLatLng ?? _activeBaseLatLng;
     List<NearbyCandidate> candidates = [];
 
     try {
       candidates = await _searchService.searchNearbyRestaurants(
-        latitude: targetLatLng.latitude,
-        longitude: targetLatLng.longitude,
+        latitude: effectiveTarget.latitude,
+        longitude: effectiveTarget.longitude,
         radiusMeters: 150,
       );
     } finally {
@@ -607,7 +619,8 @@ class _MapScreenState extends State<MapScreen>
         return QuickRegisterSheet(
           candidates: candidates,
           existingRecords: _records,
-          currentLatLng: targetLatLng,
+          currentLatLng: effectiveTarget,
+          initialName: initialName,
           onSubmit: _handleSaveOrChargeRestaurant,
           onAddToWantList: (candidate) {
             return _addWant(
@@ -677,16 +690,11 @@ class _MapScreenState extends State<MapScreen>
             _showRestaurantDetail(record);
           },
           onQuickCharge: (record) {
-            _handleSaveOrChargeRestaurant(
-              id: record.id,
-              name: record.name,
-              category: record.category,
-              latitude: record.latitude,
-              longitude: record.longitude,
-              priceRange: record.priceRange,
-              goodPoints: record.goodPoints,
-              imagePath: record.imagePath,
-              imageBase64: record.imageBase64,
+            // 2回目以降も写真を撮れるよう、即時チャージではなく
+            // その店の場所で登録シートを開く
+            _openQuickRegisterSheet(
+              targetLatLng: record.latLng,
+              initialName: record.name,
             );
           },
         );
@@ -924,6 +932,7 @@ class _MapScreenState extends State<MapScreen>
     required List<String> goodPoints,
     String? imagePath,
     String? imageBase64,
+    String? comment,
   }) async {
     final prevExp = GamificationEngine.calculateTotalExp(
       records: _records,
@@ -940,6 +949,7 @@ class _MapScreenState extends State<MapScreen>
       goodPoints: goodPoints,
       imagePath: imagePath,
       imageBase64: imageBase64,
+      comment: comment,
     );
 
     if (!mounted) return;
@@ -1010,17 +1020,35 @@ class _MapScreenState extends State<MapScreen>
         return RestaurantDetailSheet(
           record: record,
           onQuickCharge: () {
-            _handleSaveOrChargeRestaurant(
-              id: record.id,
-              name: record.name,
-              category: record.category,
-              latitude: record.latitude,
-              longitude: record.longitude,
-              priceRange: record.priceRange,
-              goodPoints: record.goodPoints,
-              imagePath: record.imagePath,
-              imageBase64: record.imageBase64,
+            // 2回目以降も写真を撮れるよう、即時チャージではなく
+            // その店の場所で登録シートを開く
+            Navigator.of(ctx).pop();
+            _openQuickRegisterSheet(
+              targetLatLng: record.latLng,
+              initialName: record.name,
             );
+          },
+          onToggleShared: (value) async {
+            final updated = await _storageService.updateRecord(
+              record.copyWith(isShared: value),
+            );
+            if (mounted) {
+              setState(() => _records = updated);
+              _friendService.scheduleSync(
+                userName: _userName,
+                records: updated,
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    value
+                        ? '「${record.name}」をフレンドに共有します'
+                        : '「${record.name}」はフレンドに表示されなくなります',
+                  ),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
           },
           onDelete: () async {
             Navigator.of(ctx).pop();
@@ -1369,6 +1397,18 @@ class _MapScreenState extends State<MapScreen>
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.gourmet_map',
                 maxZoom: 19,
+              ),
+
+              // OpenStreetMapの出典表示（利用条件で必須）
+              RichAttributionWidget(
+                alignment: AttributionAlignment.bottomLeft,
+                attributions: [
+                  TextSourceAttribution(
+                    '© OpenStreetMap contributors',
+                    onTap: () => launchUrl(
+                        Uri.parse('https://openstreetmap.org/copyright')),
+                  ),
+                ],
               ),
 
               // 現在地マーカーレイヤー（青いパルスマーカー）

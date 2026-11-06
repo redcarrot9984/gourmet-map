@@ -17,6 +17,7 @@ class SharedRecord {
   final int chargeCount;
   final String priceRange;
   final List<String> goodPoints;
+  final String comment;
 
   const SharedRecord({
     required this.id,
@@ -27,6 +28,7 @@ class SharedRecord {
     required this.chargeCount,
     required this.priceRange,
     required this.goodPoints,
+    this.comment = '',
   });
 
   /// ローカルの店舗記録から共有形式へ変換する（写真・訪問日時は落とす）。
@@ -40,6 +42,7 @@ class SharedRecord {
       chargeCount: record.chargeCount,
       priceRange: record.priceRange,
       goodPoints: record.goodPoints,
+      comment: record.comment,
     );
   }
 
@@ -53,6 +56,7 @@ class SharedRecord {
       'chargeCount': chargeCount,
       'priceRange': priceRange,
       'goodPoints': goodPoints,
+      'comment': comment,
     };
   }
 
@@ -69,6 +73,7 @@ class SharedRecord {
               ?.map((e) => e.toString())
               .toList() ??
           [],
+      comment: (json['comment'] as String?) ?? '',
     );
   }
 
@@ -86,6 +91,7 @@ class SharedRecord {
       imagePath: null,
       imageBase64: null,
       lastVisitedAt: receivedAt,
+      comment: comment,
     );
   }
 }

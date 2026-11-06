@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import '../models/restaurant_record.dart';
+import '../utils/place_match.dart';
 
 /// ステップ④：現在地周辺の飲食店候補を検索するサービスクラス
 /// Yahoo!ローカルサーチAPI (YOLP) と モック自動生成 の切り替えに対応
@@ -42,7 +43,7 @@ class RestaurantSearchService {
         }
 
         if (apiResults.isNotEmpty) {
-          return apiResults;
+          return dedupeCandidates(apiResults);
         }
       } catch (_) {
         // APIエラー時・通信オフライン時はモックデータにフォールバックして確実に動作を継続
@@ -51,6 +52,38 @@ class RestaurantSearchService {
 
     // モックモード時（または周辺に店舗がない場合のフォールバック）は架空の飲食店3件を自動生成
     return _generateMockCandidates(latitude: latitude, longitude: longitude);
+  }
+
+  /// 検索結果の重複を除く。
+  /// 同じID、または「店名が同じで近い（30m以内）」候補は重複とみなし、
+  /// 距離が近い方を残す。距離順に並べて返す。
+  static List<NearbyCandidate> dedupeCandidates(
+    List<NearbyCandidate> input,
+  ) {
+    final sorted = [...input]
+      ..sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
+    final result = <NearbyCandidate>[];
+    final seenIds = <String>{};
+    for (final candidate in sorted) {
+      if (candidate.id.isNotEmpty && !seenIds.add(candidate.id)) {
+        continue; // 同じIDは重複
+      }
+      final isDuplicate = result.any(
+        (kept) => PlaceMatch.matches(
+          lat: candidate.latitude,
+          lng: candidate.longitude,
+          name: candidate.name,
+          otherLat: kept.latitude,
+          otherLng: kept.longitude,
+          otherName: kept.name,
+          thresholdMeters: 30,
+        ),
+      );
+      if (!isDuplicate) {
+        result.add(candidate);
+      }
+    }
+    return result;
   }
 
   /// Yahoo!ローカルサーチAPI (YOLP) から周辺の飲食店を取得

@@ -105,6 +105,27 @@ class FriendRestaurantDetailSheet extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
+          // フレンドの一言コメント
+          if (record.comment.isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3E5F5),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFCE93D8)),
+              ),
+              child: Text(
+                '💬 ${friend.displayName}さん：${record.comment}',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+
           // フレンドが選んだ良かった点タグ
           if (record.goodPoints.isNotEmpty) ...[
             Wrap(

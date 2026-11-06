@@ -295,18 +295,29 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
       ..sort((a, b) => b.chargeCount.compareTo(a.chargeCount));
     final top3 = sortedRecords.take(3).toList();
 
-    // テーマ別カラーパレット
-    final List<Color> bgGradient = _themeIndex == 1
-        ? const [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)]
-        : _themeIndex == 2
-            ? const [Color(0xFF4A0E0E), Color(0xFF7B1F1F), Color(0xFF3E1E04)]
-            : const [Color(0xFF1E1E2C), Color(0xFF2D1B1E), Color(0xFF3E1F14)];
-
-    final Color borderAccent = _themeIndex == 1
-        ? const Color(0xFF00E5FF)
-        : _themeIndex == 2
-            ? const Color(0xFFFFB74D)
-            : const Color(0xFFFFD54F);
+    // テーマ別カラーパレット（0: ロイヤル黒金, 1: サイバー青, 2: 和風朱雅,
+    // 3: 抹茶モダン, 4: 夕焼けサンセット, 5: 深海ネイビー）
+    const List<List<Color>> themeGradients = [
+      [Color(0xFF1E1E2C), Color(0xFF2D1B1E), Color(0xFF3E1F14)],
+      [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
+      [Color(0xFF4A0E0E), Color(0xFF7B1F1F), Color(0xFF3E1E04)],
+      [Color(0xFF1B2A1B), Color(0xFF2E4A2A), Color(0xFF556B2F)],
+      [Color(0xFF2D1B4E), Color(0xFF7B2D5B), Color(0xFFE65100)],
+      [Color(0xFF0A1628), Color(0xFF10243E), Color(0xFF1B3A5C)],
+    ];
+    const List<Color> themeAccents = [
+      Color(0xFFFFD54F),
+      Color(0xFF00E5FF),
+      Color(0xFFFFB74D),
+      Color(0xFFC5E1A5),
+      Color(0xFFFFAB91),
+      Color(0xFF82B1FF),
+    ];
+    final themeIdx = (_themeIndex >= 0 && _themeIndex < themeGradients.length)
+        ? _themeIndex
+        : 0;
+    final List<Color> bgGradient = themeGradients[themeIdx];
+    final Color borderAccent = themeAccents[themeIdx];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -606,13 +617,16 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
           style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 6),
-        Row(
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
           children: [
             _buildThemeChoice(index: 0, label: '👑 ロイヤル黒金', isProOnly: false),
-            const SizedBox(width: 8),
             _buildThemeChoice(index: 1, label: '⚡ サイバー青', isProOnly: false),
-            const SizedBox(width: 8),
             _buildThemeChoice(index: 2, label: '🌸 和風朱雅', isProOnly: true),
+            _buildThemeChoice(index: 3, label: '🍵 抹茶モダン', isProOnly: false),
+            _buildThemeChoice(index: 4, label: '🌆 夕焼け', isProOnly: true),
+            _buildThemeChoice(index: 5, label: '🌊 深海', isProOnly: false),
           ],
         ),
 
@@ -712,17 +726,15 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
             color: isSelected ? const Color(0xFFFFF3E0) : Colors.white,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isSelected
-                  ? const Color(0xFFFF5722)
-                  : Colors.grey.shade300,
+              color:
+                  isSelected ? const Color(0xFFFF5722) : Colors.grey.shade300,
               width: isSelected ? 2 : 1,
             ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (locked)
-                const Icon(Icons.lock, size: 13, color: Colors.amber),
+              if (locked) const Icon(Icons.lock, size: 13, color: Colors.amber),
               Flexible(
                 child: Text(
                   label,
@@ -731,9 +743,8 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.bold,
-                    color: isSelected
-                        ? const Color(0xFFD84315)
-                        : Colors.black87,
+                    color:
+                        isSelected ? const Color(0xFFD84315) : Colors.black87,
                   ),
                 ),
               ),
@@ -807,9 +818,8 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
                         backgroundColor: isEquipped
                             ? const Color(0xFFFF5722)
                             : Colors.orange.shade50,
-                        foregroundColor: isEquipped
-                            ? Colors.white
-                            : const Color(0xFFD84315),
+                        foregroundColor:
+                            isEquipped ? Colors.white : const Color(0xFFD84315),
                       ),
                       onPressed: () {
                         setState(() {

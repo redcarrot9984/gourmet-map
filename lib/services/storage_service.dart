@@ -153,6 +153,8 @@ class StorageService {
       imagePath: imagePath,
       imageBase64: imageBase64,
       lastVisitedAt: r.lastVisitedAt,
+      comment: r.comment,
+      isShared: r.isShared,
     );
   }
 
@@ -205,6 +207,7 @@ class StorageService {
     required List<String> goodPoints,
     String? imagePath,
     String? imageBase64,
+    String? comment,
   }) async {
     final records = await loadRecords();
     final normalizedName = name.trim();
@@ -237,6 +240,7 @@ class StorageService {
         imageBase64: (imageBase64 != null && imageBase64.isNotEmpty)
             ? imageBase64
             : existing.imageBase64,
+        comment: comment ?? existing.comment,
         lastVisitedAt: DateTime.now(),
       );
 
@@ -257,6 +261,7 @@ class StorageService {
         imagePath: imagePath,
         imageBase64: imageBase64,
         lastVisitedAt: DateTime.now(),
+        comment: comment ?? '',
       );
 
       records.add(targetRecord);
@@ -269,6 +274,18 @@ class StorageService {
       allRecords: records,
       isRepeat: isRepeat,
     );
+  }
+
+  /// 既存の記録をそのまま更新する（コメント・共有ON/OFFの変更用）。
+  Future<List<RestaurantRecord>> updateRecord(
+    RestaurantRecord updated,
+  ) async {
+    final records = await loadRecords();
+    final index = records.indexWhere((r) => r.id == updated.id);
+    if (index == -1) return records;
+    records[index] = updated;
+    await _saveAll(records);
+    return records;
   }
 
   /// 指定店舗のチャージを1件削除または全件クリア（デバッグ・管理用）
