@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'models/friend_profile.dart';
 import 'theme/app_colors.dart';
+import 'widgets/tutorial_sheet.dart';
 import 'models/want_to_visit.dart';
 import 'models/gamification_data.dart';
 import 'models/restaurant_record.dart';
@@ -426,6 +427,17 @@ class _MapScreenState extends State<MapScreen>
       });
       unawaited(_refreshFriendsInBackground());
     }
+
+    // 初回だけチュートリアルを自動表示（以降は上部の「使い方」から開ける）
+    try {
+      final seenTutorial = await _storageService.loadHasSeenTutorial();
+      if (!seenTutorial) {
+        await _storageService.saveHasSeenTutorial();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) showTutorialSheet(context);
+        });
+      }
+    } catch (_) {}
   }
 
   /// 現在の表示称号
@@ -2086,6 +2098,13 @@ class _MapScreenState extends State<MapScreen>
             isSelected: false,
             activeColor: const Color(0xFF00897B),
             onTap: _openWantListSheet,
+          ),
+          const SizedBox(width: 6),
+          _buildFilterPill(
+            label: '使い方',
+            isSelected: false,
+            activeColor: AppColors.slate,
+            onTap: () => showTutorialSheet(context),
           ),
           const SizedBox(width: 6),
           _buildFilterPill(

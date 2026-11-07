@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/friend_profile.dart';
 import '../services/friend_sync_service.dart';
 import '../services/share_service.dart';
@@ -96,6 +97,30 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
   }
 
   /// コード再発行の確認ダイアログ（旧コードは無効になる）。
+  /// フレンド招待メッセージ（Web版URLつき：インストール不要ですぐ開ける）
+  String _inviteText() {
+    return 'グルメマップで一緒におすすめ店を記録しよう！\n'
+        '私のフレンドコード：【${widget.myFriendCode}】\n'
+        'Web版（インストール不要）：https://redcarrot9984.github.io/gourmet-map/\n'
+        '開いたら「フレンド管理」でこのコードを入力してね';
+  }
+
+  /// LINEの共有画面を開いて招待メッセージを送る
+  Future<void> _shareViaLine() async {
+    final uri = Uri.parse(
+      'https://line.me/R/share?text=${Uri.encodeComponent(_inviteText())}',
+    );
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('LINEを開けませんでした。「共有」ボタンから送ってください'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _confirmReissueCode() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -209,9 +234,7 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF4A148C), Color(0xFF7B1FA2)],
-                ),
+                color: const Color(0xFF37474F),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -264,14 +287,18 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                           ),
                           IconButton(
                             onPressed: () {
-                              final code = widget.myFriendCode;
-                              final inviteText = '🍴 グルメマップで私の常連店マップを共有中！\n'
-                                  'フレンドコード：【$code】\n'
-                                  'アプリでコードを入力してマップを見てね！ #グルメマップ';
-                              ShareService.shareTextOnly(inviteText);
+                              ShareService.shareTextOnly(_inviteText());
                             },
                             tooltip: '友達にコードを送る',
                             icon: const Icon(Icons.share, color: Colors.white),
+                          ),
+                          IconButton(
+                            onPressed: _shareViaLine,
+                            tooltip: 'LINEでコードを送る',
+                            icon: const Icon(
+                              Icons.chat_bubble,
+                              color: Colors.white,
+                            ),
                           ),
                         ],
                       ),
@@ -292,7 +319,7 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF4A148C),
+                        foregroundColor: const Color(0xFF37474F),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),

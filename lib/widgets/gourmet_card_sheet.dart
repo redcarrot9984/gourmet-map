@@ -691,15 +691,24 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
           style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 6),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        // テーマ選択は Expanded を使うため Wrap ではなく 3件×2段の Row で並べる
+        // （Wrap の中に Expanded を置くとレイアウト例外でタブ全体が空白になる）
+        Row(
           children: [
             _buildThemeChoice(index: 0, label: '👑 ロイヤル黒金', isProOnly: false),
+            const SizedBox(width: 8),
             _buildThemeChoice(index: 1, label: '⚡ サイバー青', isProOnly: false),
+            const SizedBox(width: 8),
             _buildThemeChoice(index: 2, label: '🌸 和風朱雅', isProOnly: true),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
             _buildThemeChoice(index: 3, label: '🍵 抹茶モダン', isProOnly: false),
+            const SizedBox(width: 8),
             _buildThemeChoice(index: 4, label: '🌆 夕焼け', isProOnly: true),
+            const SizedBox(width: 8),
             _buildThemeChoice(index: 5, label: '🌊 深海', isProOnly: false),
           ],
         ),
