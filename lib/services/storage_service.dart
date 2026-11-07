@@ -72,6 +72,22 @@ class StorageService {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // チュートリアル表示済みフラグ（初回だけ自動表示する）
+  // ---------------------------------------------------------------------------
+
+  static const String _tutorialSeenKey = 'gourmet_map_tutorial_seen_v1';
+
+  Future<bool> loadHasSeenTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_tutorialSeenKey) ?? false;
+  }
+
+  Future<void> saveHasSeenTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_tutorialSeenKey, true);
+  }
+
   /// ユーザー名（グルメ名刺用）を読み込む
   Future<String> loadUserName() async {
     final prefs = await SharedPreferences.getInstance();

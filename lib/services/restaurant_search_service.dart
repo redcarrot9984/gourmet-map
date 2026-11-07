@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import '../models/restaurant_record.dart';
@@ -23,6 +24,31 @@ class RestaurantSearchService {
     required double longitude,
     int radiusMeters = 150,
   }) async {
+    // Web版：Yahoo! APIはブラウザのCORS制限で直接呼べないため、
+    // CORS対応の Overpass API（OpenStreetMap）から周辺店舗を取得する
+    if (kIsWeb && !forceMockMode) {
+      try {
+        var results = await _fetchFromOverpass(
+          latitude: latitude,
+          longitude: longitude,
+          radiusMeters: radiusMeters,
+        );
+        if (results.isEmpty && radiusMeters < 800) {
+          results = await _fetchFromOverpass(
+            latitude: latitude,
+            longitude: longitude,
+            radiusMeters: 800,
+          );
+        }
+        if (results.isNotEmpty) {
+          return dedupeCandidates(results);
+        }
+      } catch (_) {
+        // 失敗時はモックへフォールバック
+      }
+      return _generateMockCandidates(latitude: latitude, longitude: longitude);
+    }
+
     // AppIDが設定されており、強制モックモードでない場合はYahoo!ローカルサーチAPIを呼び出す
     if (!isMockMode) {
       try {
@@ -54,9 +80,13 @@ class RestaurantSearchService {
     return _generateMockCandidates(latitude: latitude, longitude: longitude);
   }
 
-  /// 検索結果の重複を除く。
-  /// 同じID、または「店名が同じで近い（30m以内）」候補は重複とみなし、
-  /// 距離が近い方を残す。距離順に並べて返す。
+  /// 検索結果の重複を除く（距離が近い方を残し、距離順に返す）。
+  /// APIが同じ店を複数の入口座標や表記ゆれで返すことがあるため、
+  /// 次のいずれかに当てはまれば重複とみなす：
+  /// - 同じID
+  /// - 店名が似ていて 60m 以内
+  /// - 店名が完全一致（表記ゆれ除去後）で 150m 以内
+  /// - 住所が同じで店名が似ていて 200m 以内
   static List<NearbyCandidate> dedupeCandidates(
     List<NearbyCandidate> input,
   ) {
@@ -68,22 +98,102 @@ class RestaurantSearchService {
       if (candidate.id.isNotEmpty && !seenIds.add(candidate.id)) {
         continue; // 同じIDは重複
       }
-      final isDuplicate = result.any(
-        (kept) => PlaceMatch.matches(
-          lat: candidate.latitude,
-          lng: candidate.longitude,
-          name: candidate.name,
-          otherLat: kept.latitude,
-          otherLng: kept.longitude,
-          otherName: kept.name,
-          thresholdMeters: 30,
-        ),
-      );
+      final isDuplicate = result.any((kept) {
+        final meters = PlaceMatch.metersBetween(
+          candidate.latitude,
+          candidate.longitude,
+          kept.latitude,
+          kept.longitude,
+        );
+        if (PlaceMatch.nameSimilar(candidate.name, kept.name) && meters <= 60) {
+          return true;
+        }
+        if (PlaceMatch.normalizeName(candidate.name) ==
+                PlaceMatch.normalizeName(kept.name) &&
+            meters <= 150) {
+          return true;
+        }
+        if (candidate.address.isNotEmpty &&
+            candidate.address == kept.address &&
+            PlaceMatch.nameSimilar(candidate.name, kept.name) &&
+            meters <= 200) {
+          return true;
+        }
+        return false;
+      });
       if (!isDuplicate) {
         result.add(candidate);
       }
     }
     return result;
+  }
+
+  /// Web版向け：Overpass API（OpenStreetMap）から周辺の飲食店を取得する。
+  /// ブラウザから直接呼べる（CORS対応）ため、Web版ではこちらを使う。
+  Future<List<NearbyCandidate>> _fetchFromOverpass({
+    required double latitude,
+    required double longitude,
+    required int radiusMeters,
+  }) async {
+    const amenityLabels = {
+      'restaurant': '🍴 飲食店',
+      'cafe': '☕ カフェ・喫茶',
+      'fast_food': '🍔 ファストフード',
+      'food_court': '🍴 フードコート',
+      'bakery': '🥐 ベーカリー',
+      'bar': '🍺 バー・居酒屋',
+      'pub': '🍺 バー・居酒屋',
+      'ice_cream': '🍨 アイスクリーム',
+    };
+    final query = '''
+[out:json][timeout:15];
+(
+  node["amenity"~"restaurant|cafe|fast_food|food_court|bakery|bar|pub|ice_cream"]["name"](around:$radiusMeters,$latitude,$longitude);
+  way["amenity"~"restaurant|cafe|fast_food|food_court"]["name"](around:$radiusMeters,$latitude,$longitude);
+);
+out center 40;
+''';
+    final response = await http.post(
+      Uri.parse('https://overpass-api.de/api/interpreter'),
+      body: {'data': query},
+    ).timeout(const Duration(seconds: 20));
+    if (response.statusCode != 200) {
+      throw Exception('Overpass API error: ${response.statusCode}');
+    }
+    final data =
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final elements = data['elements'] as List<dynamic>? ?? [];
+    const distanceCalc = Distance();
+    final userPoint = LatLng(latitude, longitude);
+    final candidates = <NearbyCandidate>[];
+    for (final raw in elements) {
+      final element = raw as Map<String, dynamic>;
+      final tags = element['tags'] as Map<String, dynamic>? ?? {};
+      final name = (tags['name'] ?? '').toString();
+      if (name.isEmpty) continue;
+      final center = element['center'] as Map<String, dynamic>?;
+      final lat = (element['lat'] as num?)?.toDouble() ??
+          (center?['lat'] as num?)?.toDouble();
+      final lon = (element['lon'] as num?)?.toDouble() ??
+          (center?['lon'] as num?)?.toDouble();
+      if (lat == null || lon == null) continue;
+      final amenity = (tags['amenity'] ?? 'restaurant').toString();
+      candidates.add(
+        NearbyCandidate(
+          id: 'osm_${element['type']}_${element['id']}',
+          name: name,
+          category: amenityLabels[amenity] ?? '🍴 飲食店',
+          latitude: lat,
+          longitude: lon,
+          distanceMeters: distanceCalc
+              .as(LengthUnit.Meter, userPoint, LatLng(lat, lon))
+              .round(),
+          address: '',
+          isMock: false,
+        ),
+      );
+    }
+    return candidates;
   }
 
   /// Yahoo!ローカルサーチAPI (YOLP) から周辺の飲食店を取得
