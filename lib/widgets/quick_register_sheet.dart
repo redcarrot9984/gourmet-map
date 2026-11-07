@@ -210,22 +210,32 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
         lng = widget.currentLatLng.longitude;
       }
 
-      await widget.onSubmit(
+      // 登録処理（演出ダイアログ表示を含む）は呼び出し側で行う。
+      // シートを開いたままダイアログを重ねると、閉じる順序によっては
+      // 画面が真っ黒になる不具合があったため、先にシートを閉じてから渡す。
+      final submit = widget.onSubmit;
+      final submitArgs = (
         id: id,
         name: name,
         category: category,
         latitude: lat,
         longitude: lng,
+      );
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      await submit(
+        id: submitArgs.id,
+        name: submitArgs.name,
+        category: submitArgs.category,
+        latitude: submitArgs.latitude,
+        longitude: submitArgs.longitude,
         priceRange: _selectedPrice,
         goodPoints: _selectedGoodPoints.toList(),
         imagePath: _imagePath,
         imageBase64: _imageBase64,
         comment: _commentController.text.trim(),
       );
-
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -472,11 +482,7 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
-                                currentCount == 0
-                                    ? '初訪問 (銅へ)'
-                                    : currentCount == 1
-                                        ? '現在1回 → 銀へ⚡'
-                                        : '現在$currentCount回 → 金🔥',
+                                RestaurantRecord.nextRankHint(currentCount),
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,

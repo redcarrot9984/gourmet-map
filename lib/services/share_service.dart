@@ -48,9 +48,9 @@ class ShareService {
     final mapUrl =
         'https://www.google.com/maps/search/?api=1&query=${record.latitude},${record.longitude}';
 
-    final chargeEmoji = record.chargeCount >= 3
+    final chargeEmoji = record.chargeCount >= 10
         ? '🔥'
-        : record.chargeCount == 2
+        : record.chargeCount >= 2
             ? '⚡'
             : '📍';
 

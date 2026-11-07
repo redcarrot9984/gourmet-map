@@ -112,6 +112,21 @@ class FriendSyncService {
   // 自分のマップの同期
   // ---------------------------------------------------------------------------
 
+  /// 名刺テーマのインデックス（main から設定される）。
+  /// サーバー側に card_theme 列がある場合だけ別途送る（無い環境では無視）。
+  int cardThemeIndex = 0;
+
+  Future<void> _pushCardTheme() async {
+    if (!_authReady || _uid == null) return;
+    try {
+      await _client
+          .from(tableName)
+          .update({'card_theme': cardThemeIndex}).eq('owner_id', _uid!);
+    } catch (_) {
+      // 列が無い環境ではテーマ共有だけ諦める（同期本体は成功扱い）
+    }
+  }
+
   Map<String, dynamic> _buildPayload({
     required String code,
     required String userName,
@@ -202,6 +217,7 @@ class FriendSyncService {
       await _client.from(tableName).upsert(
             _buildPayload(code: _myCode!, userName: userName, records: records),
           );
+      await _pushCardTheme();
       await _markSynced();
       return (
         synced: true,
@@ -323,6 +339,7 @@ class FriendSyncService {
       colorValue: _pickColorForCode(code),
       records: records,
       syncedAt: now,
+      cardThemeIndex: (row['card_theme'] as num?)?.toInt() ?? 0,
     );
   }
 

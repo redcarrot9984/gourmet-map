@@ -35,14 +35,22 @@ NearbyCandidate cand(String id, String name, double lat, double lng, int dist) {
 
 void main() {
   group('ランク階段', () {
-    test('回数ごとにランク名が上がる', () {
+    test('回数ごとにランク名が上がる（間隔は広め）', () {
       expect(rec(1).rankTitle, contains('BRONZE'));
       expect(rec(2).rankTitle, contains('SILVER'));
-      expect(rec(3).rankTitle, contains('GOLD'));
-      expect(rec(4).rankTitle, contains('PLATINUM'));
-      expect(rec(5).rankTitle, contains('LEGEND'));
-      expect(rec(7).rankTitle, contains('DIAMOND'));
-      expect(rec(10).rankTitle, contains('RAINBOW'));
+      expect(rec(9).rankTitle, contains('SILVER'));
+      expect(rec(10).rankTitle, contains('GOLD'));
+      expect(rec(20).rankTitle, contains('PLATINUM'));
+      expect(rec(30).rankTitle, contains('LEGEND'));
+      expect(rec(50).rankTitle, contains('DIAMOND'));
+      expect(rec(100).rankTitle, contains('RAINBOW'));
+    });
+
+    test('次のランクまでの目安', () {
+      expect(RestaurantRecord.nextRankHint(0), contains('初訪問'));
+      expect(RestaurantRecord.nextRankHint(1), contains('2回で銀'));
+      expect(RestaurantRecord.nextRankHint(5), contains('10回で金'));
+      expect(RestaurantRecord.nextRankHint(100), contains('神の常連'));
     });
   });
 

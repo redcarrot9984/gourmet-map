@@ -19,6 +19,7 @@ class FriendProfile {
   final List<RestaurantRecord> records; // フレンドの登録店舗リスト
   final DateTime syncedAt;
   final bool isSample; // 体験用サンプル（実在の利用者ではない）かどうか
+  final int cardThemeIndex; // 名刺テーマ（フレンドの名刺表示用）
 
   const FriendProfile({
     required this.friendCode,
@@ -29,6 +30,7 @@ class FriendProfile {
     required this.records,
     required this.syncedAt,
     this.isSample = false,
+    this.cardThemeIndex = 0,
   });
 
   Color get themeColor => Color(colorValue);
@@ -47,6 +49,7 @@ class FriendProfile {
     List<RestaurantRecord>? records,
     DateTime? syncedAt,
     bool? isSample,
+    int? cardThemeIndex,
   }) {
     return FriendProfile(
       friendCode: friendCode ?? this.friendCode,
@@ -57,6 +60,7 @@ class FriendProfile {
       records: records ?? this.records,
       syncedAt: syncedAt ?? this.syncedAt,
       isSample: isSample ?? this.isSample,
+      cardThemeIndex: cardThemeIndex ?? this.cardThemeIndex,
     );
   }
 
@@ -70,6 +74,7 @@ class FriendProfile {
       'records': records.map((r) => r.toJson()).toList(),
       'syncedAt': syncedAt.toIso8601String(),
       'isSample': isSample,
+      'cardThemeIndex': cardThemeIndex,
     };
   }
 
@@ -88,6 +93,7 @@ class FriendProfile {
           ? DateTime.tryParse(json['syncedAt'] as String) ?? DateTime.now()
           : DateTime.now(),
       isSample: (json['isSample'] as bool?) ?? false,
+      cardThemeIndex: (json['cardThemeIndex'] as num?)?.toInt() ?? 0,
     );
   }
 

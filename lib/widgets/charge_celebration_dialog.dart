@@ -20,8 +20,8 @@ class ChargeCelebrationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final count = record.chargeCount;
-    final isLegend = count >= 5;
-    final isGold = count >= 3;
+    final isLegend = count >= 30;
+    final isGold = count >= 10;
     final isSilver = count == 2;
 
     final List<Color> gradient = isLegend
@@ -97,11 +97,19 @@ class ChargeCelebrationDialog extends StatelessWidget {
               ),
               child: Text(
                 isRepeat
-                    ? (count == 3
-                        ? '🔥 GOLD RANK UP!! 🔥'
-                        : count == 2
-                            ? '⚡ SILVER RANK UP!! ⚡'
-                            : '⚡ CHARGE UP!! (+1)')
+                    ? (count == 100
+                        ? '🌈 RAINBOW RANK UP!! 🌈'
+                        : count == 50
+                            ? '💎 DIAMOND RANK UP!! 💎'
+                            : count == 30
+                                ? '👑 LEGEND RANK UP!! 👑'
+                                : count == 20
+                                    ? '🔷 PLATINUM RANK UP!! 🔷'
+                                    : count == 10
+                                        ? '🔥 GOLD RANK UP!! 🔥'
+                                        : count == 2
+                                            ? '⚡ SILVER RANK UP!! ⚡'
+                                            : '⚡ CHARGE UP!! (+1)')
                     : '🎉 NEW SPOT DISCOVERED!!',
                 style: const TextStyle(
                   color: Color(0xFFD84315),
@@ -225,4 +233,3 @@ class ChargeCelebrationDialog extends StatelessWidget {
     );
   }
 }
-

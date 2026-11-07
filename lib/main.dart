@@ -17,11 +17,11 @@ import 'services/share_service.dart';
 import 'services/storage_service.dart';
 import 'widgets/charge_celebration_dialog.dart';
 import 'widgets/cluster_pin_marker.dart';
-import 'widgets/merged_pin_marker.dart';
 import 'widgets/want_list_sheet.dart';
 import 'widgets/want_pin_marker.dart';
 import 'widgets/friend_management_sheet.dart';
 import 'widgets/friend_pin_marker.dart';
+import 'widgets/friend_card_sheet.dart';
 import 'widgets/friend_restaurant_detail_sheet.dart';
 import 'widgets/gourmet_card_sheet.dart';
 import 'widgets/premium_paywall_sheet.dart';
@@ -415,6 +415,7 @@ class _MapScreenState extends State<MapScreen>
         _myFriendCode = friendInit.myCode;
         _friends = friendInit.friends;
         _wantList = loadedWants;
+        _friendService.cardThemeIndex = loadedThemeIdx;
         _pullSyncState();
       });
       unawaited(_refreshFriendsInBackground());
@@ -664,6 +665,9 @@ class _MapScreenState extends State<MapScreen>
           onCardThemeChanged: (newIndex) {
             setState(() => _cardThemeIndex = newIndex);
             _storageService.saveCardThemeIndex(newIndex);
+            // フレンドの名刺表示用にテーマも同期する
+            _friendService.cardThemeIndex = newIndex;
+            _friendService.scheduleSync(userName: _userName, records: _records);
           },
           onOpenPaywall: _openPremiumPaywallSheet,
         );
@@ -934,6 +938,45 @@ class _MapScreenState extends State<MapScreen>
     String? imageBase64,
     String? comment,
   }) async {
+    try {
+      await _handleSaveOrChargeRestaurantInner(
+        id: id,
+        name: name,
+        category: category,
+        latitude: latitude,
+        longitude: longitude,
+        priceRange: priceRange,
+        goodPoints: goodPoints,
+        imagePath: imagePath,
+        imageBase64: imageBase64,
+        comment: comment,
+      );
+    } catch (e) {
+      // 保存や演出で例外が出ても画面を真っ黒にせず、失敗を伝える
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('保存に失敗しました。もう一度お試しください（$e）'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleSaveOrChargeRestaurantInner({
+    required String id,
+    required String name,
+    required String category,
+    required double latitude,
+    required double longitude,
+    required String priceRange,
+    required List<String> goodPoints,
+    String? imagePath,
+    String? imageBase64,
+    String? comment,
+  }) async {
     final prevExp = GamificationEngine.calculateTotalExp(
       records: _records,
       friends: _friends,
@@ -1092,7 +1135,7 @@ class _MapScreenState extends State<MapScreen>
       return [
         for (final cell in cells)
           if (cell.length == 1)
-            _markerForGroup(cell.first)
+            ..._markersForGroup(cell.first)
           else
             Marker(
               point: clusterCenter(cell),
@@ -1113,133 +1156,78 @@ class _MapScreenState extends State<MapScreen>
       ];
     }
 
-    return [for (final group in groups) _markerForGroup(group)];
+    return [for (final group in groups) ..._markersForGroup(group)];
   }
 
-  /// グループ1件分のマーカー（単体なら通常ピン、複数なら合体ピン）。
-  Marker _markerForGroup(PinGroup group) {
+  /// グループ分のマーカー。単体なら通常ピン、複数なら同じ地点を中心に
+  /// 扇状に広げて、それぞれのピンを直接タップできるようにする。
+  List<Marker> _markersForGroup(PinGroup group) {
     if (!group.isMerged) {
       final entry = group.entries.first;
-      if (entry.isMine) {
-        final record = entry.record;
-        return Marker(
-          point: record.latLng,
-          width: RestaurantPinMarker.markerWidthForCount(record.chargeCount),
-          height: RestaurantPinMarker.markerHeightForCount(record.chargeCount),
-          alignment: Alignment.center,
-          child: RestaurantPinMarker(
-            record: record,
-            onTap: () => _showRestaurantDetail(record),
-          ),
-        );
-      }
-      final friend = entry.friend!;
-      final record = entry.record;
-      return Marker(
-        point: record.latLng,
-        width: 112,
-        height: 102,
-        alignment: Alignment.center,
-        child: FriendPinMarker(
-          friend: friend,
-          record: record,
-          onTap: () => _showFriendRestaurantDetail(friend, record),
-        ),
-      );
+      return [_singlePinMarker(entry, group.point)];
     }
 
-    return Marker(
-      point: group.point,
-      width: 120,
-      height: 92,
-      alignment: Alignment.center,
-      child: MergedPinMarker(
-        group: group,
-        onTap: () => _showPinGroupChooser(group),
-      ),
+    final offsets = fanOutOffsets(group.entries.length);
+    return [
+      for (var i = 0; i < group.entries.length; i++)
+        Marker(
+          point: group.point,
+          width: 190,
+          height: 170,
+          alignment: Alignment.center,
+          child: Transform.translate(
+            offset: offsets[i],
+            child: _pinWidgetForEntry(group.entries[i]),
+          ),
+        ),
+    ];
+  }
+
+  /// 扇状配置の中身（通常サイズのピンウィジェット）。
+  Widget _pinWidgetForEntry(PinEntry entry) {
+    if (entry.isMine) {
+      final record = entry.record;
+      return RestaurantPinMarker(
+        record: record,
+        onTap: () => _showRestaurantDetail(record),
+      );
+    }
+    final friend = entry.friend!;
+    final record = entry.record;
+    return FriendPinMarker(
+      friend: friend,
+      record: record,
+      onTap: () => _showFriendRestaurantDetail(friend, record),
     );
   }
 
-  /// F1：合体ピンをタップしたときの選択シート（自分の記録／フレンドの記録）。
-  void _showPinGroupChooser(PinGroup group) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'この場所のお店',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                '見たい記録を選んでください',
-                style: TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-              const SizedBox(height: 10),
-              for (final entry in group.entries)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: entry.isMine
-                        ? const Color(0xFFFF5722)
-                        : entry.friend!.themeColor,
-                    child: Text(
-                      entry.isMine ? '自' : entry.friend!.avatarEmoji,
-                      style: TextStyle(
-                        color: entry.isMine ? Colors.white : null,
-                        fontSize: entry.isMine ? 13 : 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  title: Text(
-                    entry.record.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    entry.isMine
-                        ? '自分の記録 • チャージ${entry.record.chargeCount}回'
-                        : '${entry.friend!.displayName}さんの記録 • チャージ${entry.record.chargeCount}回',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    if (entry.isMine) {
-                      _showRestaurantDetail(entry.record);
-                    } else {
-                      _showFriendRestaurantDetail(
-                        entry.friend!,
-                        entry.record,
-                      );
-                    }
-                  },
-                ),
-            ],
-          ),
-        );
-      },
+  /// 単体ピンのマーカー。
+  Marker _singlePinMarker(PinEntry entry, LatLng fallbackPoint) {
+    if (entry.isMine) {
+      final record = entry.record;
+      return Marker(
+        point: record.latLng,
+        width: RestaurantPinMarker.markerWidthForCount(record.chargeCount),
+        height: RestaurantPinMarker.markerHeightForCount(record.chargeCount),
+        alignment: Alignment.center,
+        child: RestaurantPinMarker(
+          record: record,
+          onTap: () => _showRestaurantDetail(record),
+        ),
+      );
+    }
+    final friend = entry.friend!;
+    final record = entry.record;
+    return Marker(
+      point: record.latLng,
+      width: 112,
+      height: 102,
+      alignment: Alignment.center,
+      child: FriendPinMarker(
+        friend: friend,
+        record: record,
+        onTap: () => _showFriendRestaurantDetail(friend, record),
+      ),
     );
   }
 
@@ -1256,6 +1244,14 @@ class _MapScreenState extends State<MapScreen>
         return FriendRestaurantDetailSheet(
           friend: friend,
           record: record,
+          onViewCard: () {
+            showModalBottomSheet<void>(
+              context: context,
+              backgroundColor: Colors.transparent,
+              isScrollControlled: true,
+              builder: (_) => FriendCardSheet(friend: friend),
+            );
+          },
           onAddToWantList: friend.isSample
               ? null
               : () {
