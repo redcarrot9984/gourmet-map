@@ -35,6 +35,42 @@ class StorageService {
   static const String _cardThemeIndexKey = 'gourmet_map_card_theme_idx_v1';
   static const String _isProMemberKey = 'gourmet_map_is_pro_member_v1';
   static const String _wantListKey = 'gourmet_map_want_list_v1';
+  static const String _avatarEmojiKey = 'gourmet_map_avatar_emoji_v1';
+
+  /// 自分のアバター絵文字（初期値 🔥）
+  static const String defaultAvatarEmoji = '🔥';
+  static const List<String> avatarChoices = [
+    '🔥',
+    '🍜',
+    '🍣',
+    '🍔',
+    '🍕',
+    '🍰',
+    '☕',
+    '🍺',
+    '🍱',
+    '🥟',
+    '🍛',
+    '🐱',
+    '🐶',
+    '🦊',
+    '⭐',
+    '👑',
+  ];
+
+  Future<String> loadAvatarEmoji() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString(_avatarEmojiKey);
+    return (value == null || value.isEmpty) ? defaultAvatarEmoji : value;
+  }
+
+  Future<void> saveAvatarEmoji(String emoji) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _avatarEmojiKey,
+      emoji.trim().isEmpty ? defaultAvatarEmoji : emoji.trim(),
+    );
+  }
 
   /// ユーザー名（グルメ名刺用）を読み込む
   Future<String> loadUserName() async {

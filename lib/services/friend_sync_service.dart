@@ -116,6 +116,9 @@ class FriendSyncService {
   /// サーバー側に card_theme 列がある場合だけ別途送る（無い環境では無視）。
   int cardThemeIndex = 0;
 
+  /// 自分のアバター絵文字（main から設定される）。
+  String avatarEmoji = '🔥';
+
   Future<void> _pushCardTheme() async {
     if (!_authReady || _uid == null) return;
     try {
@@ -136,7 +139,7 @@ class FriendSyncService {
       'owner_id': _uid,
       'friend_code': code,
       'display_name': userName,
-      'avatar_emoji': '🔥',
+      'avatar_emoji': avatarEmoji,
       'title': ShareService.calculateGourmetTitle(records),
       // 店ごとの共有OFF（isShared=false）の店は相手に送らない
       'records_json': records
