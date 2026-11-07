@@ -59,6 +59,58 @@ class GourmetMapApp extends StatelessWidget {
           backgroundColor: Colors.white,
           foregroundColor: Colors.black87,
         ),
+        // モダンUI基盤：角丸・余白・影のトーンを全体で統一する
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+        ),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(24)),
+          ),
+        ),
+        snackBarTheme: const SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.ink,
+          contentTextStyle: TextStyle(color: Colors.white, fontSize: 13),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: AppColors.mist,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.slate, width: 1.5),
+          ),
+        ),
+        chipTheme: ChipThemeData(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
+          side: BorderSide.none,
+          backgroundColor: AppColors.mist,
+          selectedColor: const Color(0xFFCFD8DC),
+          labelStyle: const TextStyle(fontSize: 12.5),
+        ),
       ),
       home: const MapScreen(),
     );
@@ -1533,6 +1585,8 @@ class _MapScreenState extends State<MapScreen>
                   heroTag: 'reset_btn',
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.grey.shade800,
+                  elevation: 3,
+                  shape: const CircleBorder(),
                   tooltip: '東京駅へ戻る',
                   onPressed: () {
                     _mapController.move(_tokyoStation, 16.0);
@@ -1544,7 +1598,8 @@ class _MapScreenState extends State<MapScreen>
                   heroTag: 'gps_btn',
                   backgroundColor: Colors.white,
                   foregroundColor: AppColors.slate,
-                  elevation: 4,
+                  elevation: 3,
+                  shape: const CircleBorder(),
                   tooltip: '現在地へ移動',
                   onPressed: _isLoadingGps
                       ? null
@@ -1616,19 +1671,12 @@ class _MapScreenState extends State<MapScreen>
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
+        color: Colors.white.withValues(alpha: 0.97),
+        borderRadius: BorderRadius.circular(AppColors.radiusCard),
+        boxShadow: AppColors.floatingShadow,
         border: Border.all(
-          color:
-              _isProMember ? const Color(0xFFFFD700) : Colors.orange.shade100,
-          width: 1.5,
+          color: _isProMember ? const Color(0xFFFFD700) : AppColors.line,
+          width: 1,
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1685,6 +1733,20 @@ class _MapScreenState extends State<MapScreen>
                     children: [
                       Row(
                         children: [
+                          Container(
+                            width: 27,
+                            height: 27,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.mist,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              _avatarEmoji,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ),
+                          const SizedBox(width: 7),
                           Flexible(
                             child: Text(
                               _userName,
@@ -1704,17 +1766,17 @@ class _MapScreenState extends State<MapScreen>
                                 vertical: 1.5,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.amber.shade100,
+                                color: AppColors.mist,
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 _displayTitle,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.brown.shade900,
+                                  color: AppColors.ink,
                                 ),
                               ),
                             ),
@@ -1764,9 +1826,8 @@ class _MapScreenState extends State<MapScreen>
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.deepOrange.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.orange.shade200),
+                    color: AppColors.mist,
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
                     children: [
@@ -1775,7 +1836,7 @@ class _MapScreenState extends State<MapScreen>
                         style: const TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFFD84315),
+                          color: AppColors.ink,
                         ),
                       ),
                       Text(
@@ -1930,7 +1991,7 @@ class _MapScreenState extends State<MapScreen>
               offset: const Offset(0, 6),
             ),
           ],
-          border: Border.all(color: Colors.orange.shade100, width: 1.5),
+          border: Border.all(color: AppColors.line, width: 1),
         ),
         child: Row(
           children: [
@@ -2036,7 +2097,7 @@ class _MapScreenState extends State<MapScreen>
   /// マップ表示フィルター＆店舗図鑑ショートカットピルバー
   Widget _buildFriendMapSwitchBar() {
     return SizedBox(
-      height: 34,
+      height: 38,
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
@@ -2128,18 +2189,18 @@ class _MapScreenState extends State<MapScreen>
   }) {
     const selectedColor = Color(0xFF37474F);
     return Material(
-      color: isSelected ? selectedColor : Colors.white.withValues(alpha: 0.94),
-      borderRadius: BorderRadius.circular(18),
+      color: isSelected ? selectedColor : Colors.white.withValues(alpha: 0.96),
+      borderRadius: BorderRadius.circular(999),
       elevation: 1,
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(999),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: isSelected ? selectedColor : Colors.grey.shade300,
+              color: isSelected ? selectedColor : AppColors.line,
               width: 1,
             ),
           ),

@@ -44,7 +44,7 @@ class _ShopListSheetState extends State<ShopListSheet> {
       ),
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Column(
@@ -66,7 +66,7 @@ class _ShopListSheetState extends State<ShopListSheet> {
             children: [
               const Icon(
                 Icons.format_list_bulleted_rounded,
-                color: Color(0xFFFF5722),
+                color: Color(0xFF546E7A),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -232,7 +232,7 @@ class _ShopListSheetState extends State<ShopListSheet> {
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         fontSize: 11,
-                                        color: Color(0xFFD84315),
+                                        color: Color(0xFF37474F),
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -279,7 +279,7 @@ class _ShopListSheetState extends State<ShopListSheet> {
                                     '＋1チャージ',
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: Color(0xFFFF5722),
+                                      color: Color(0xFF546E7A),
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -311,7 +311,7 @@ class _ShopListSheetState extends State<ShopListSheet> {
         ),
       ),
       selected: selected,
-      selectedColor: const Color(0xFFFF5722),
+      selectedColor: const Color(0xFF37474F),
       backgroundColor: Colors.grey.shade100,
       showCheckmark: false,
       onSelected: (_) => setState(() => _rankFilter = value),

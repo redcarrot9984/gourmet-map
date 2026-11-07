@@ -251,7 +251,7 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: EdgeInsets.only(
         left: 20,
@@ -282,8 +282,8 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.deepOrange.shade50,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFECEFF1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -488,9 +488,7 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                                   fontWeight: FontWeight.bold,
                                   color: currentCount == 0
                                       ? Colors.brown.shade800
-                                      : currentCount == 1
-                                          ? Colors.blueGrey.shade900
-                                          : Colors.deepOrange.shade900,
+                                      : Colors.blueGrey.shade900,
                                 ),
                               ),
                             ),
