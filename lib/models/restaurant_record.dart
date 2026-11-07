@@ -39,6 +39,8 @@ class RestaurantRecord {
   final String? imagePath; // 撮影した写真のローカルパス
   final String? imageBase64; // クロスプラットフォーム用Base64画像データ
   final DateTime lastVisitedAt;
+  final String comment; // 一言コメント（フレンドにも共有される）
+  final bool isShared; // フレンドへ共有するかどうか（店ごとのON/OFF）
 
   const RestaurantRecord({
     required this.id,
@@ -52,12 +54,18 @@ class RestaurantRecord {
     this.imagePath,
     this.imageBase64,
     required this.lastVisitedAt,
+    this.comment = '',
+    this.isShared = true,
   });
 
   LatLng get latLng => LatLng(latitude, longitude);
 
-  /// ピンのランク名称を取得
+  /// ピンのランク名称を取得（回数に応じて8段階）
   String get rankTitle {
+    if (chargeCount >= 10) return '🌈 神の常連 (RAINBOW)';
+    if (chargeCount >= 7) return '💎 ダイヤ常連 (DIAMOND)';
+    if (chargeCount >= 5) return '👑 殿堂レジェンド (LEGEND)';
+    if (chargeCount >= 4) return '🔷 プラチナ常連 (PLATINUM)';
     if (chargeCount >= 3) return '🔥 常連レジェンド (GOLD)';
     if (chargeCount == 2) return '✨ リピーター (SILVER)';
     return '🍴 初訪問 (BRONZE)';
@@ -75,6 +83,8 @@ class RestaurantRecord {
     String? imagePath,
     String? imageBase64,
     DateTime? lastVisitedAt,
+    String? comment,
+    bool? isShared,
   }) {
     return RestaurantRecord(
       id: id ?? this.id,
@@ -88,6 +98,8 @@ class RestaurantRecord {
       imagePath: imagePath ?? this.imagePath,
       imageBase64: imageBase64 ?? this.imageBase64,
       lastVisitedAt: lastVisitedAt ?? this.lastVisitedAt,
+      comment: comment ?? this.comment,
+      isShared: isShared ?? this.isShared,
     );
   }
 
@@ -104,6 +116,8 @@ class RestaurantRecord {
       'imagePath': imagePath,
       'imageBase64': imageBase64,
       'lastVisitedAt': lastVisitedAt.toIso8601String(),
+      'comment': comment,
+      'isShared': isShared,
     };
   }
 
@@ -125,6 +139,8 @@ class RestaurantRecord {
       lastVisitedAt: json['lastVisitedAt'] != null
           ? DateTime.tryParse(json['lastVisitedAt'] as String) ?? DateTime.now()
           : DateTime.now(),
+      comment: (json['comment'] as String?) ?? '',
+      isShared: (json['isShared'] as bool?) ?? true,
     );
   }
 
@@ -139,4 +155,3 @@ class RestaurantRecord {
         .toList();
   }
 }
-

@@ -123,8 +123,11 @@ class FriendSyncService {
       'display_name': userName,
       'avatar_emoji': '🔥',
       'title': ShareService.calculateGourmetTitle(records),
-      'records_json':
-          records.map((r) => SharedRecord.fromRecord(r).toJson()).toList(),
+      // 店ごとの共有OFF（isShared=false）の店は相手に送らない
+      'records_json': records
+          .where((r) => r.isShared)
+          .map((r) => SharedRecord.fromRecord(r).toJson())
+          .toList(),
       'updated_at': DateTime.now().toIso8601String(),
     };
   }

@@ -20,7 +20,11 @@ class QuickRegisterSheet extends StatefulWidget {
     required List<String> goodPoints,
     String? imagePath,
     String? imageBase64,
+    String? comment,
   }) onSubmit;
+
+  /// 店名の初期値（行きたいリストや再訪導線から引き継ぐ）。
+  final String? initialName;
 
   /// N1：候補を「行きたいリスト」へ追加する（任意）。
   final Future<bool> Function(NearbyCandidate candidate)? onAddToWantList;
@@ -32,6 +36,7 @@ class QuickRegisterSheet extends StatefulWidget {
     required this.currentLatLng,
     required this.onSubmit,
     this.onAddToWantList,
+    this.initialName,
   });
 
   @override
@@ -56,6 +61,7 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
 
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _customNameController = TextEditingController();
+  final TextEditingController _commentController = TextEditingController();
 
   late int _selectedCandidateIndex;
   bool _useCustomName = false;
@@ -76,11 +82,28 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
     // ステップ④で取得した現在地周辺の店名候補の先頭を自動で選択
     _selectedCandidateIndex = 0;
     _syncExistingTagsIfAny();
+
+    // 店名の引き継ぎ（行きたいリスト・再訪導線）：
+    // 同じ店が候補にあればそれを選び、なければカスタム名として初期入力する
+    final initial = widget.initialName;
+    if (initial != null && initial.isNotEmpty) {
+      final matchIndex = widget.candidates.indexWhere(
+        (c) => c.name == initial,
+      );
+      if (matchIndex >= 0) {
+        _selectedCandidateIndex = matchIndex;
+        _syncExistingTagsIfAny();
+      } else {
+        _customNameController.text = initial;
+        _useCustomName = true;
+      }
+    }
   }
 
   @override
   void dispose() {
     _customNameController.dispose();
+    _commentController.dispose();
     super.dispose();
   }
 
@@ -121,6 +144,9 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
         _selectedGoodPoints
           ..clear()
           ..addAll(existing.goodPoints);
+      }
+      if (existing.comment.isNotEmpty && _commentController.text.isEmpty) {
+        _commentController.text = existing.comment;
       }
     }
   }
@@ -194,6 +220,7 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
         goodPoints: _selectedGoodPoints.toList(),
         imagePath: _imagePath,
         imageBase64: _imageBase64,
+        comment: _commentController.text.trim(),
       );
 
       if (mounted) {
@@ -684,9 +711,38 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
               }).toList(),
             ),
 
-            const SizedBox(height: 22),
+            const SizedBox(height: 16),
 
-            // 5. 登録＆チャージ実行ボタン
+            // 5. 一言コメント（フレンドにも共有される）
+            const Text(
+              '⑤ 一言コメント（任意・フレンドにも表示されます）',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _commentController,
+              maxLength: 60,
+              decoration: InputDecoration(
+                hintText: '例：平日ランチがお得、麺の硬さが選べる',
+                hintStyle:
+                    TextStyle(fontSize: 12.5, color: Colors.grey.shade500),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+              ),
+              style: const TextStyle(fontSize: 13.5),
+            ),
+
+            const SizedBox(height: 14),
+
+            // 6. 登録＆チャージ実行ボタン
             SizedBox(
               width: double.infinity,
               height: 54,

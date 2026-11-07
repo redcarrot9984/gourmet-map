@@ -18,6 +18,8 @@ class RestaurantPinMarker extends StatefulWidget {
 
   /// チャージ回数に応じたマーカー全体の幅
   static double markerWidthForCount(int count) {
+    if (count >= 10) return 132; // 神の常連（虹）
+    if (count >= 7) return 128; // ダイヤ
     if (count >= 5) return 124; // 殿堂入り特大サイズ
     if (count >= 3) return 116; // 特大サイズ
     if (count == 2) return 100; // 少し大きいサイズ
@@ -26,6 +28,8 @@ class RestaurantPinMarker extends StatefulWidget {
 
   /// チャージ回数に応じたマーカー全体の高さ
   static double markerHeightForCount(int count) {
+    if (count >= 10) return 120; // 神の常連（虹）
+    if (count >= 7) return 116; // ダイヤ
     if (count >= 5) return 112; // 殿堂入り特大サイズ
     if (count >= 3) return 104; // 特大サイズ
     if (count == 2) return 88; // 少し大きいサイズ
@@ -76,38 +80,72 @@ class _RestaurantPinMarkerState extends State<RestaurantPinMarker>
   Widget build(BuildContext context) {
     final record = widget.record;
     final count = record.chargeCount;
+    final isRainbow = count >= 10;
+    final isDiamond = count >= 7 && count < 10;
     final isLegend = count >= 5;
+    final isPlatinum = count == 4;
     final isGold = count >= 3;
     final isSilver = count == 2;
 
-    // ピン円のサイズ（1回: 38, 2回: 48, 3〜4回: 60, 5回以上: 64）
-    final double pinCircleSize =
-        isLegend ? 64 : (isGold ? 60 : (isSilver ? 48 : 38));
+    // ピン円のサイズ（1回: 38, 2回: 48, 3回: 56, 4回: 60, 5〜6回: 64, 7〜9回: 68, 10回以上: 72）
+    final double pinCircleSize = isRainbow
+        ? 72
+        : isDiamond
+            ? 68
+            : isLegend
+                ? 64
+                : isPlatinum
+                    ? 60
+                    : (isGold ? 56 : (isSilver ? 48 : 38));
 
-    final List<Color> gradientColors = isLegend
+    final List<Color> gradientColors = isRainbow
         ? const [
-            Color(0xFFFFFDE7),
-            Color(0xFFFFD700),
-            Color(0xFFFF3D00),
-            Color(0xFFAA00FF),
+            Color(0xFFFF8A80),
+            Color(0xFFFFD180),
+            Color(0xFFFFFF8D),
+            Color(0xFFCCFF90),
+            Color(0xFF84FFFF),
+            Color(0xFF8C9EFF),
+            Color(0xFFEA80FC),
           ]
-        : isGold
+        : isDiamond
             ? const [
-                Color(0xFFFFF59D),
-                Color(0xFFFFD700),
-                Color(0xFFFF8F00),
+                Color(0xFFE0F7FA),
+                Color(0xFF80DEEA),
+                Color(0xFF00ACC1),
+                Color(0xFF006064),
               ]
-            : isSilver
+            : isLegend
                 ? const [
-                    Color(0xFFFFFFFF),
-                    Color(0xFFCFD8DC),
-                    Color(0xFF607D8B),
+                    Color(0xFFFFFDE7),
+                    Color(0xFFFFD700),
+                    Color(0xFFFF3D00),
+                    Color(0xFFAA00FF),
                   ]
-                : const [
-                    Color(0xFFE6A15C),
-                    Color(0xFFCD7F32),
-                    Color(0xFF8B4513),
-                  ];
+                : isPlatinum
+                    ? const [
+                        Color(0xFFFFFFFF),
+                        Color(0xFFB3E5FC),
+                        Color(0xFF4FC3F7),
+                        Color(0xFF01579B),
+                      ]
+                    : isGold
+                        ? const [
+                            Color(0xFFFFF59D),
+                            Color(0xFFFFD700),
+                            Color(0xFFFF8F00),
+                          ]
+                        : isSilver
+                            ? const [
+                                Color(0xFFFFFFFF),
+                                Color(0xFFCFD8DC),
+                                Color(0xFF607D8B),
+                              ]
+                            : const [
+                                Color(0xFFE6A15C),
+                                Color(0xFFCD7F32),
+                                Color(0xFF8B4513),
+                              ];
 
     final Color borderColor = isLegend
         ? const Color(0xFFFFEA00)
@@ -193,7 +231,9 @@ class _RestaurantPinMarkerState extends State<RestaurantPinMarker>
                           Positioned(
                             bottom: 4,
                             child: Icon(
-                              isLegend ? Icons.workspace_premium : Icons.restaurant,
+                              isLegend
+                                  ? Icons.workspace_premium
+                                  : Icons.restaurant,
                               color: Colors.white.withValues(alpha: 0.95),
                               size: 16,
                             ),
@@ -202,9 +242,8 @@ class _RestaurantPinMarkerState extends State<RestaurantPinMarker>
                       )
                     : Icon(
                         isSilver ? Icons.stars_rounded : Icons.restaurant,
-                        color: isSilver
-                            ? const Color(0xFF263238)
-                            : Colors.white,
+                        color:
+                            isSilver ? const Color(0xFF263238) : Colors.white,
                         size: isSilver ? 26 : 19,
                       ),
               ),

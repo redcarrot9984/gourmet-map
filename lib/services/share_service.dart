@@ -18,10 +18,20 @@ class ShareService {
         records.fold<int>(0, (sum, item) => sum + item.chargeCount);
     final goldCount = records.where((r) => r.chargeCount >= 3).length;
 
-    if (goldCount >= 3 || totalCharges >= 15) {
+    final diamondCount = records.where((r) => r.chargeCount >= 7).length;
+
+    if (diamondCount >= 2 || totalCharges >= 40) {
+      return '🌈 グルメ界の頂点';
+    } else if (goldCount >= 5 || totalCharges >= 25) {
+      return '💎 至高のグルメ皇帝';
+    } else if (goldCount >= 3 || totalCharges >= 15) {
       return '👑 伝説のグルメ覇王';
+    } else if (records.length >= 12) {
+      return '🗺️ エリア開拓の覇者';
     } else if (goldCount >= 1 || totalCharges >= 7) {
       return '🔥 街の常連マスター';
+    } else if (records.length >= 6) {
+      return '🧭 味覚の探検家';
     } else if (records.length >= 3 || totalCharges >= 3) {
       return '⚡ 爆速グルメハンター';
     } else if (records.isNotEmpty) {
