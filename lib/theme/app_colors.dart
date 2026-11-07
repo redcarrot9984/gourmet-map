@@ -27,6 +27,15 @@ class AppColors {
   /// 区切り線
   static const Color line = Color(0xFFE0E0E0);
 
+  /// 地図に浮かぶカード類の共通の影（柔らかく薄く）
+  static const List<BoxShadow> floatingShadow = [
+    BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, 6)),
+  ];
+
+  /// シートやカードの標準の角丸
+  static const double radiusCard = 22;
+  static const double radiusSheet = 28;
+
   /// フレンド識別色のパレット（彩度を落とした色味で揃える）
   static const List<Color> friendPalette = [
     Color(0xFF5E7A68), // セージグリーン
