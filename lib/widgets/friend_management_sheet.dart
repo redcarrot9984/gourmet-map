@@ -43,6 +43,8 @@ class FriendManagementSheet extends StatefulWidget {
 
 class _FriendManagementSheetState extends State<FriendManagementSheet> {
   final TextEditingController _codeController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+  String _friendQuery = '';
   bool _isSyncing = false;
   bool _isAdding = false;
   bool _isRefreshing = false;
@@ -50,6 +52,7 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
   @override
   void dispose() {
     _codeController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -483,6 +486,40 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
             ),
             const SizedBox(height: 6),
 
+            // フレンドが増えてきたら名前・コードで絞り込める検索欄
+            if (widget.friends.length >= 3) ...[
+              TextField(
+                controller: _searchController,
+                onChanged: (value) => setState(() => _friendQuery = value),
+                decoration: InputDecoration(
+                  hintText: 'フレンドを検索（名前・コード）',
+                  hintStyle:
+                      TextStyle(fontSize: 12.5, color: Colors.grey.shade500),
+                  prefixIcon: const Icon(Icons.search, size: 19),
+                  suffixIcon: _friendQuery.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _friendQuery = '');
+                          },
+                        ),
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  isDense: true,
+                ),
+                style: const TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+            ],
+
             if (widget.friends.isEmpty)
               Container(
                 width: double.infinity,
@@ -498,8 +535,23 @@ class _FriendManagementSheetState extends State<FriendManagementSheet> {
                   style: TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               )
+            else if (FriendProfile.filterByQuery(widget.friends, _friendQuery)
+                .isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Center(
+                  child: Text(
+                    '「$_friendQuery」に一致するフレンドはいません',
+                    style:
+                        const TextStyle(fontSize: 12.5, color: Colors.black54),
+                  ),
+                ),
+              )
             else
-              ...widget.friends.map((friend) {
+              ...FriendProfile.filterByQuery(
+                FriendProfile.sortedForDisplay(widget.friends),
+                _friendQuery,
+              ).map((friend) {
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
                   elevation: 0,

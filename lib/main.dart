@@ -90,6 +90,7 @@ class _MapScreenState extends State<MapScreen>
   // 登録済み店舗リスト（ステップ⑤）＆ ユーザー設定（ステップ⑥〜⑨）
   List<RestaurantRecord> _records = [];
   String _userName = 'グルメ開拓者';
+  String _avatarEmoji = StorageService.defaultAvatarEmoji;
   String? _customTitle;
   int _cardThemeIndex = 0;
   bool _isProMember = false;
@@ -396,6 +397,7 @@ class _MapScreenState extends State<MapScreen>
   Future<void> _loadInitialData() async {
     final loadedRecords = await _storageService.loadRecords();
     final loadedName = await _storageService.loadUserName();
+    final loadedAvatar = await _storageService.loadAvatarEmoji();
     final loadedCustomTitle = await _storageService.loadCustomTitle();
     final loadedThemeIdx = await _storageService.loadCardThemeIndex();
     final loadedIsPro = await _storageService.loadIsProMember();
@@ -409,6 +411,8 @@ class _MapScreenState extends State<MapScreen>
       setState(() {
         _records = loadedRecords;
         _userName = loadedName;
+        _avatarEmoji = loadedAvatar;
+        _friendService.avatarEmoji = loadedAvatar;
         _customTitle = loadedCustomTitle;
         _cardThemeIndex = loadedThemeIdx;
         _isProMember = loadedIsPro;
@@ -646,6 +650,13 @@ class _MapScreenState extends State<MapScreen>
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return GourmetCardSheet(
+          avatarEmoji: _avatarEmoji,
+          onAvatarChanged: (emoji) {
+            setState(() => _avatarEmoji = emoji);
+            _storageService.saveAvatarEmoji(emoji);
+            _friendService.avatarEmoji = emoji;
+            _friendService.scheduleSync(userName: _userName, records: _records);
+          },
           initialUserName: _userName,
           customTitle: _customTitle,
           cardThemeIndex: _cardThemeIndex,
@@ -2091,13 +2102,16 @@ class _MapScreenState extends State<MapScreen>
   Widget _buildFilterPill({
     required String label,
     required bool isSelected,
+    // 色は呼び出し側の指定を受け取るが、選択色は全体で1色に統一する
+    // （ピルごとに色が違うと雑然として見えるため）。
     required Color activeColor,
     required VoidCallback onTap,
   }) {
+    const selectedColor = Color(0xFF37474F);
     return Material(
-      color: isSelected ? activeColor : Colors.white.withValues(alpha: 0.94),
+      color: isSelected ? selectedColor : Colors.white.withValues(alpha: 0.94),
       borderRadius: BorderRadius.circular(18),
-      elevation: 2,
+      elevation: 1,
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
@@ -2106,8 +2120,8 @@ class _MapScreenState extends State<MapScreen>
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: isSelected ? activeColor : Colors.grey.shade300,
-              width: 1.2,
+              color: isSelected ? selectedColor : Colors.grey.shade300,
+              width: 1,
             ),
           ),
           alignment: Alignment.center,

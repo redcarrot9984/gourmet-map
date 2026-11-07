@@ -3,6 +3,7 @@ import '../models/friend_profile.dart';
 import '../models/gamification_data.dart';
 import '../models/restaurant_record.dart';
 import '../services/share_service.dart';
+import '../services/storage_service.dart';
 
 /// ステップ⑥＆⑧：進化版「マイ・グルメ名刺 ＆ 称号コレクション図鑑」画面
 class GourmetCardSheet extends StatefulWidget {
@@ -12,6 +13,8 @@ class GourmetCardSheet extends StatefulWidget {
   final bool isProMember;
   final List<RestaurantRecord> records;
   final List<FriendProfile> friends;
+  final String avatarEmoji;
+  final ValueChanged<String> onAvatarChanged;
   final ValueChanged<String> onUserNameChanged;
   final ValueChanged<String?> onCustomTitleChanged;
   final ValueChanged<int> onCardThemeChanged;
@@ -19,6 +22,8 @@ class GourmetCardSheet extends StatefulWidget {
 
   const GourmetCardSheet({
     super.key,
+    required this.avatarEmoji,
+    required this.onAvatarChanged,
     required this.initialUserName,
     required this.customTitle,
     required this.cardThemeIndex,
@@ -38,6 +43,7 @@ class GourmetCardSheet extends StatefulWidget {
 class _GourmetCardSheetState extends State<GourmetCardSheet> {
   final GlobalKey _cardBoundaryKey = GlobalKey();
   late String _userName;
+  late String _avatarEmoji;
   late String? _selectedTitle;
   late int _themeIndex;
   int _activeTab = 0; // 0: グルメ名刺プレビュー, 1: 称号コレクション図鑑
@@ -47,6 +53,7 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
   void initState() {
     super.initState();
     _userName = widget.initialUserName;
+    _avatarEmoji = widget.avatarEmoji;
     _selectedTitle = widget.customTitle;
     _themeIndex = widget.cardThemeIndex;
   }
@@ -59,6 +66,59 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
   }
 
   /// ユーザー名編集ダイアログ
+  /// アバター絵文字の選択ダイアログ。
+  Future<void> _editAvatar() async {
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text(
+            'アイコンを選ぶ',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          content: SizedBox(
+            width: 280,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final emoji in StorageService.avatarChoices)
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => Navigator.of(ctx).pop(emoji),
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: emoji == _avatarEmoji
+                            ? const Color(0xFFFFECB3)
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: emoji == _avatarEmoji
+                              ? const Color(0xFFFF8F00)
+                              : Colors.grey.shade300,
+                          width: emoji == _avatarEmoji ? 2 : 1,
+                        ),
+                      ),
+                      child: Center(
+                        child:
+                            Text(emoji, style: const TextStyle(fontSize: 26)),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (selected != null && selected != _avatarEmoji && mounted) {
+      setState(() => _avatarEmoji = selected);
+      widget.onAvatarChanged(selected);
+    }
+  }
+
   void _editUserName() {
     final controller = TextEditingController(text: _userName);
     showDialog<void>(
@@ -192,6 +252,11 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
                 onPressed: _editUserName,
                 icon: const Icon(Icons.edit, size: 15),
                 label: const Text('名前変更', style: TextStyle(fontSize: 12)),
+              ),
+              TextButton.icon(
+                onPressed: _editAvatar,
+                icon: Text(_avatarEmoji, style: const TextStyle(fontSize: 15)),
+                label: const Text('アイコン', style: TextStyle(fontSize: 12)),
               ),
               IconButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -404,9 +469,18 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
                 ),
                 const SizedBox(height: 12),
 
-                // ユーザー名 ＆ PROバッジ
+                // アバター ＆ ユーザー名 ＆ PROバッジ
                 Row(
                   children: [
+                    CircleAvatar(
+                      radius: 21,
+                      backgroundColor: Colors.white.withValues(alpha: 0.16),
+                      child: Text(
+                        _avatarEmoji,
+                        style: const TextStyle(fontSize: 23),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         _userName,

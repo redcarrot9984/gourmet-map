@@ -97,6 +97,35 @@ class FriendProfile {
     );
   }
 
+  /// 管理画面向けの並び順：実在のフレンドを先に、店舗数の多い順、
+  /// サンプルは最後にまとめる。
+  static List<FriendProfile> sortedForDisplay(List<FriendProfile> friends) {
+    final sorted = [...friends];
+    sorted.sort((a, b) {
+      if (a.isSample != b.isSample) return a.isSample ? 1 : -1;
+      final byCount = b.records.length.compareTo(a.records.length);
+      if (byCount != 0) return byCount;
+      return a.displayName.compareTo(b.displayName);
+    });
+    return sorted;
+  }
+
+  /// 名前・フレンドコードでの絞り込み（大文字小文字は区別しない）。
+  static List<FriendProfile> filterByQuery(
+    List<FriendProfile> friends,
+    String query,
+  ) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return friends;
+    return friends
+        .where(
+          (f) =>
+              f.displayName.toLowerCase().contains(q) ||
+              f.friendCode.toLowerCase().contains(q),
+        )
+        .toList();
+  }
+
   static String encodeList(List<FriendProfile> friends) {
     return jsonEncode(friends.map((f) => f.toJson()).toList());
   }
