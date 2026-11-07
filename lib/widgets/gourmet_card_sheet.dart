@@ -217,7 +217,7 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
       ),
       decoration: const BoxDecoration(
         color: Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Column(
@@ -237,7 +237,7 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
           // ヘッダー
           Row(
             children: [
-              const Icon(Icons.badge, color: Color(0xFFFF5722), size: 26),
+              const Icon(Icons.badge, color: Color(0xFF546E7A), size: 26),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
@@ -334,7 +334,7 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w900,
-            color: isSelected ? const Color(0xFFFF5722) : Colors.black54,
+            color: isSelected ? const Color(0xFF263238) : Colors.black54,
           ),
         ),
       ),
@@ -750,7 +750,7 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
                 height: 50,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF5722),
+                    backgroundColor: const Color(0xFF263238),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -806,11 +806,11 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFFFF3E0) : Colors.white,
+            color: isSelected ? const Color(0xFFECEFF1) : Colors.white,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color:
-                  isSelected ? const Color(0xFFFF5722) : Colors.grey.shade300,
+                  isSelected ? const Color(0xFF546E7A) : Colors.grey.shade300,
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -827,7 +827,7 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
                     fontSize: 11.5,
                     fontWeight: FontWeight.bold,
                     color:
-                        isSelected ? const Color(0xFFD84315) : Colors.black87,
+                        isSelected ? const Color(0xFF263238) : Colors.black87,
                   ),
                 ),
               ),
@@ -860,7 +860,7 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
               borderRadius: BorderRadius.circular(14),
               side: BorderSide(
                 color: isEquipped
-                    ? const Color(0xFFFF5722)
+                    ? const Color(0xFF37474F)
                     : badge.isUnlocked
                         ? badge.color.withValues(alpha: 0.45)
                         : Colors.grey.shade300,
@@ -899,10 +899,10 @@ class _GourmetCardSheetState extends State<GourmetCardSheet> {
                       style: FilledButton.styleFrom(
                         visualDensity: VisualDensity.compact,
                         backgroundColor: isEquipped
-                            ? const Color(0xFFFF5722)
-                            : Colors.orange.shade50,
+                            ? const Color(0xFF37474F)
+                            : const Color(0xFFECEFF1),
                         foregroundColor:
-                            isEquipped ? Colors.white : const Color(0xFFD84315),
+                            isEquipped ? Colors.white : const Color(0xFF37474F),
                       ),
                       onPressed: () {
                         setState(() {

@@ -69,7 +69,7 @@ class _RestaurantDetailSheetState extends State<RestaurantDetailSheet> {
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
       child: SingleChildScrollView(
@@ -204,7 +204,7 @@ class _RestaurantDetailSheetState extends State<RestaurantDetailSheet> {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: Colors.deepOrange,
+                            color: Color(0xFF546E7A),
                           ),
                         ),
                       ],
