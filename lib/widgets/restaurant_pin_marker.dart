@@ -218,20 +218,16 @@ class _RestaurantPinMarkerState extends State<RestaurantPinMarker>
           clipBehavior: Clip.none,
           alignment: Alignment.center,
           children: [
-            // 3回以上（金ピン／殿堂入り）の背面オーラ発光エフェクト
+            // 金ランク以上は控えめな背面グロー（発光は弱めに留める）
             if (isGold)
               Container(
-                width: pinCircleSize + 16,
-                height: pinCircleSize + 16,
+                width: pinCircleSize + 12,
+                height: pinCircleSize + 12,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      (isLegend
-                              ? const Color(0xFFD500F9)
-                              : const Color(0xFFFF6D00))
-                          .withValues(alpha: 0.58),
-                      const Color(0xFFFFD600).withValues(alpha: 0.25),
+                      const Color(0xFFFFB300).withValues(alpha: 0.22),
                       Colors.transparent,
                     ],
                   ),

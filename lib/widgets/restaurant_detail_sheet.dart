@@ -254,9 +254,9 @@ class _RestaurantDetailSheetState extends State<RestaurantDetailSheet> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF8E1),
+                          color: const Color(0xFFECEFF1),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFFFE082)),
+                          border: Border.all(color: const Color(0xFFCFD8DC)),
                         ),
                         child: Text(
                           '💬 ${record.comment}',
@@ -281,16 +281,17 @@ class _RestaurantDetailSheetState extends State<RestaurantDetailSheet> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.orange.shade50,
+                              color: const Color(0xFFECEFF1),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.orange.shade200),
+                              border:
+                                  Border.all(color: const Color(0xFFCFD8DC)),
                             ),
                             child: Text(
                               '👍 $tag',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.deepOrange.shade800,
+                                color: Color(0xFF37474F),
                               ),
                             ),
                           );
@@ -362,9 +363,9 @@ class _RestaurantDetailSheetState extends State<RestaurantDetailSheet> {
                     height: 46,
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFFF5722),
+                        foregroundColor: const Color(0xFF37474F),
                         side: const BorderSide(
-                          color: Color(0xFFFF5722),
+                          color: Color(0xFF546E7A),
                           width: 1.5,
                         ),
                         shape: RoundedRectangleBorder(
@@ -400,7 +401,7 @@ class _RestaurantDetailSheetState extends State<RestaurantDetailSheet> {
               height: 50,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF5722),
+                  backgroundColor: const Color(0xFF263238),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),

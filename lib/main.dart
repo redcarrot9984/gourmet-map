@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'models/friend_profile.dart';
+import 'theme/app_colors.dart';
 import 'models/want_to_visit.dart';
 import 'models/gamification_data.dart';
 import 'models/restaurant_record.dart';
@@ -46,11 +47,12 @@ class GourmetMapApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF5722),
-          primary: const Color(0xFFFF5722),
-          secondary: const Color(0xFFFF9800),
+          seedColor: const Color(0xFF607D8B),
+          primary: AppColors.primary,
+          secondary: const Color(0xFF78909C),
           surface: Colors.white,
         ),
+        scaffoldBackgroundColor: AppColors.paper,
         appBarTheme: const AppBarTheme(
           elevation: 0,
           backgroundColor: Colors.white,
@@ -303,7 +305,7 @@ class _MapScreenState extends State<MapScreen>
                   Expanded(
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF5722),
+                        backgroundColor: const Color(0xFF37474F),
                         foregroundColor: Colors.white,
                       ),
                       onPressed: () {
@@ -1448,7 +1450,7 @@ class _MapScreenState extends State<MapScreen>
                                 height: 20,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: const Color(0xFF1976D2),
+                                  color: AppColors.slate,
                                   border: Border.all(
                                     color: Colors.white,
                                     width: 3,
@@ -1529,7 +1531,7 @@ class _MapScreenState extends State<MapScreen>
                 FloatingActionButton(
                   heroTag: 'gps_btn',
                   backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF1976D2),
+                  foregroundColor: AppColors.slate,
                   elevation: 4,
                   tooltip: '現在地へ移動',
                   onPressed: _isLoadingGps
@@ -1632,9 +1634,7 @@ class _MapScreenState extends State<MapScreen>
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFF5722), Color(0xFFFF8F00)],
-                    ),
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -1720,7 +1720,7 @@ class _MapScreenState extends State<MapScreen>
                                 minHeight: 5,
                                 backgroundColor: Colors.grey.shade200,
                                 valueColor: const AlwaysStoppedAnimation<Color>(
-                                  Color(0xFFFF5722),
+                                  Color(0xFF546E7A),
                                 ),
                               ),
                             ),
@@ -1957,10 +1957,10 @@ class _MapScreenState extends State<MapScreen>
                 height: double.infinity,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF5722),
+                    backgroundColor: AppColors.ink,
                     foregroundColor: Colors.white,
-                    elevation: 4,
-                    shadowColor: const Color(0xFFFF5722).withValues(alpha: 0.5),
+                    elevation: 3,
+                    shadowColor: Colors.black26,
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(26),
@@ -1978,7 +1978,7 @@ class _MapScreenState extends State<MapScreen>
                         )
                       : const Icon(Icons.add_a_photo, size: 20),
                   label: Text(
-                    _isSearchingShops ? '検索中...' : '＋ 店を登録',
+                    _isSearchingShops ? '検索中...' : '店を登録',
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
@@ -1999,7 +1999,7 @@ class _MapScreenState extends State<MapScreen>
                   children: [
                     const Icon(
                       Icons.people_alt_outlined,
-                      color: Color(0xFF7B1FA2),
+                      color: AppColors.slate,
                       size: 22,
                     ),
                     const SizedBox(height: 2),
@@ -2008,7 +2008,7 @@ class _MapScreenState extends State<MapScreen>
                       style: const TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF7B1FA2),
+                        color: AppColors.slate,
                       ),
                     ),
                   ],
@@ -2029,7 +2029,7 @@ class _MapScreenState extends State<MapScreen>
         scrollDirection: Axis.horizontal,
         children: [
           _buildFilterPill(
-            label: '👥 自分＋友達 (${_friends.length})',
+            label: '自分＋友達 (${_friends.length})',
             isSelected: _mapFilterMode == MapFilterMode.allWithFriends,
             activeColor: const Color(0xFF7B1FA2),
             onTap: () {
@@ -2041,7 +2041,7 @@ class _MapScreenState extends State<MapScreen>
           ),
           const SizedBox(width: 6),
           _buildFilterPill(
-            label: '📍 自分のみ (${_records.length})',
+            label: '自分のみ (${_records.length})',
             isSelected: _mapFilterMode == MapFilterMode.mineOnly,
             activeColor: const Color(0xFFFF5722),
             onTap: () {
@@ -2075,14 +2075,14 @@ class _MapScreenState extends State<MapScreen>
             );
           }),
           _buildFilterPill(
-            label: '📋 登録店リスト',
+            label: '登録店リスト',
             isSelected: false,
             activeColor: Colors.brown.shade700,
             onTap: _openShopListSheet,
           ),
           const SizedBox(width: 6),
           _buildFilterPill(
-            label: '🔖 行きたい (${_wantList.length})',
+            label: '行きたい (${_wantList.length})',
             isSelected: false,
             activeColor: const Color(0xFF00897B),
             onTap: _openWantListSheet,

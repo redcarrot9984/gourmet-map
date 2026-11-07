@@ -72,7 +72,7 @@ class AdMobSmartBanner extends StatelessWidget {
           TextButton(
             style: TextButton.styleFrom(
               visualDensity: VisualDensity.compact,
-              foregroundColor: const Color(0xFFFFD54F),
+              foregroundColor: const Color(0xFFECEFF1),
               padding: const EdgeInsets.symmetric(horizontal: 8),
             ),
             onPressed: onTapRemoveAds,
@@ -109,8 +109,8 @@ class PremiumPaywallSheet extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFF1A1A2E),
-            Color(0xFF16213E),
+            Color(0xFF263238),
+            Color(0xFF37474F),
           ],
         ),
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -132,17 +132,9 @@ class PremiumPaywallSheet extends StatelessWidget {
           // 王冠アイコン
           Container(
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFD700), Color(0xFFFF8F00)],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFFD700).withValues(alpha: 0.4),
-                  blurRadius: 16,
-                ),
-              ],
+              color: Color(0xFFFFD700),
             ),
             child: const Icon(
               Icons.workspace_premium,
@@ -252,7 +244,7 @@ class PremiumPaywallSheet extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFFFFD54F), size: 24),
+          Icon(icon, color: const Color(0xFFCFD8DC), size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

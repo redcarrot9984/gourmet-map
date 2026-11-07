@@ -165,7 +165,7 @@ class _WantListSheetState extends State<WantListSheet> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE0F2F1),
+                            color: const Color(0xFFECEFF1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -191,8 +191,8 @@ class _WantListSheetState extends State<WantListSheet> {
                         FilledButton.tonal(
                           style: FilledButton.styleFrom(
                             visualDensity: VisualDensity.compact,
-                            backgroundColor: const Color(0xFFE0F2F1),
-                            foregroundColor: const Color(0xFF00695C),
+                            backgroundColor: const Color(0xFFECEFF1),
+                            foregroundColor: const Color(0xFF37474F),
                           ),
                           onPressed: () => widget.onRegisterAt(want),
                           child: const Text(
@@ -231,7 +231,7 @@ class _WantListSheetState extends State<WantListSheet> {
         label: Text(label, style: const TextStyle(fontSize: 11.5)),
         selected: selected,
         onSelected: (_) => setState(() => _sourceFilter = source),
-        selectedColor: const Color(0xFFB2DFDB),
+        selectedColor: const Color(0xFFCFD8DC),
         visualDensity: VisualDensity.compact,
       ),
     );
