@@ -288,7 +288,7 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                   ),
                   child: const Icon(
                     Icons.bolt,
-                    color: Color(0xFFFF5722),
+                    color: Color(0xFF546E7A),
                     size: 24,
                   ),
                 ),
@@ -400,12 +400,12 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                         ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? const Color(0xFFFFF3E0)
+                              ? const Color(0xFFECEFF1)
                               : Colors.grey.shade50,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: isSelected
-                                ? const Color(0xFFFF5722)
+                                ? const Color(0xFF546E7A)
                                 : Colors.grey.shade300,
                             width: isSelected ? 2.0 : 1.0,
                           ),
@@ -417,7 +417,7 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                                   ? Icons.radio_button_checked
                                   : Icons.radio_button_off,
                               color: isSelected
-                                  ? const Color(0xFFFF5722)
+                                  ? const Color(0xFF546E7A)
                                   : Colors.grey,
                               size: 20,
                             ),
@@ -435,7 +435,7 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                                             fontWeight: FontWeight.bold,
                                             fontSize: 15,
                                             color: isSelected
-                                                ? const Color(0xFFD84315)
+                                                ? const Color(0xFF37474F)
                                                 : Colors.black87,
                                           ),
                                         ),
@@ -506,7 +506,7 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                                   _wantAddedIds.contains(candidate.id)
                                       ? Icons.bookmark
                                       : Icons.bookmark_add_outlined,
-                                  color: const Color(0xFF00897B),
+                                  color: const Color(0xFF546E7A),
                                   size: 21,
                                 ),
                                 onPressed: () async {
@@ -597,7 +597,7 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         side: const BorderSide(
-                          color: Color(0xFFFF5722),
+                          color: Color(0xFF546E7A),
                           width: 1.5,
                         ),
                         shape: RoundedRectangleBorder(
@@ -606,12 +606,12 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                       ),
                       onPressed: () => _pickPhoto(ImageSource.camera),
                       icon: const Icon(Icons.camera_alt,
-                          color: Color(0xFFFF5722)),
+                          color: Color(0xFF37474F)),
                       label: const Text(
                         'カメラで撮影',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFFF5722),
+                          color: Color(0xFF37474F),
                         ),
                       ),
                     ),
@@ -665,7 +665,7 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                         ),
                       ),
                       selected: isSelected,
-                      selectedColor: const Color(0xFFFF5722),
+                      selectedColor: const Color(0xFFCFD8DC),
                       backgroundColor: Colors.grey.shade100,
                       showCheckmark: false,
                       onSelected: (_) {
@@ -697,12 +697,12 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
                       fontSize: 12.5,
                       fontWeight: FontWeight.bold,
                       color:
-                          isSelected ? const Color(0xFFD84315) : Colors.black87,
+                          isSelected ? const Color(0xFF37474F) : Colors.black87,
                     ),
                   ),
                   selected: isSelected,
-                  selectedColor: const Color(0xFFFFCCBC),
-                  checkmarkColor: const Color(0xFFD84315),
+                  selectedColor: const Color(0xFFCFD8DC),
+                  checkmarkColor: const Color(0xFF37474F),
                   backgroundColor: Colors.grey.shade100,
                   onSelected: (checked) {
                     setState(() {
@@ -754,11 +754,7 @@ class _QuickRegisterSheetState extends State<QuickRegisterSheet> {
               height: 54,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: nextCount >= 3
-                      ? const Color(0xFFFF6F00) // 金＋炎カラー
-                      : nextCount == 2
-                          ? const Color(0xFF455A64) // 銀カラー
-                          : const Color(0xFFFF5722), // 通常オレンジ
+                  backgroundColor: const Color(0xFF263238),
                   foregroundColor: Colors.white,
                   elevation: 4,
                   shape: RoundedRectangleBorder(

@@ -21,7 +21,7 @@ class WantPinMarker extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: const Color(0xFF00897B),
+              color: const Color(0xFF546E7A),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.white, width: 1.5),
               boxShadow: const [
@@ -45,7 +45,7 @@ class WantPinMarker extends StatelessWidget {
           ),
           const Icon(
             Icons.bookmark,
-            color: Color(0xFF00897B),
+            color: Color(0xFF546E7A),
             size: 34,
             shadows: [Shadow(color: Colors.black38, blurRadius: 4)],
           ),

@@ -24,13 +24,14 @@ class ChargeCelebrationDialog extends StatelessWidget {
     final isGold = count >= 10;
     final isSilver = count == 2;
 
-    final List<Color> gradient = isLegend
-        ? const [Color(0xFF4A148C), Color(0xFFD500F9)]
+    // ランク色は意味があるので残すが、グラデーションはやめて単色にする
+    final Color rankColor = isLegend
+        ? const Color(0xFF37474F)
         : isGold
-            ? const [Color(0xFFFF6F00), Color(0xFFFFD600)]
+            ? const Color(0xFFFF8F00)
             : isSilver
-                ? const [Color(0xFF37474F), Color(0xFF90A4AE)]
-                : const [Color(0xFF5D4037), Color(0xFFCD7F32)];
+                ? const Color(0xFF78909C)
+                : const Color(0xFF8D6E63);
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -41,7 +42,7 @@ class ChargeCelebrationDialog extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(26),
           border: Border.all(
-            color: isGold ? const Color(0xFFFFD700) : Colors.orange.shade200,
+            color: isGold ? const Color(0xFFFFD700) : const Color(0xFFCFD8DC),
             width: 3,
           ),
           boxShadow: [
@@ -61,15 +62,11 @@ class ChargeCelebrationDialog extends StatelessWidget {
               height: 72,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: gradient,
-                ),
+                color: rankColor,
                 boxShadow: [
                   BoxShadow(
-                    color: gradient.first.withValues(alpha: 0.45),
-                    blurRadius: 14,
+                    color: rankColor.withValues(alpha: 0.35),
+                    blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
@@ -92,7 +89,7 @@ class ChargeCelebrationDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: const Color(0xFFECEFF1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -112,7 +109,7 @@ class ChargeCelebrationDialog extends StatelessWidget {
                                             : '⚡ CHARGE UP!! (+1)')
                     : '🎉 NEW SPOT DISCOVERED!!',
                 style: const TextStyle(
-                  color: Color(0xFFD84315),
+                  color: Color(0xFF37474F),
                   fontWeight: FontWeight.w900,
                   fontSize: 12.5,
                   letterSpacing: 0.8,

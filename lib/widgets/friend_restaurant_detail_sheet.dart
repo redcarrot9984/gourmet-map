@@ -250,7 +250,7 @@ class FriendRestaurantDetailSheet extends StatelessWidget {
               height: 46,
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF00695C),
+                  foregroundColor: const Color(0xFF37474F),
                   side: const BorderSide(color: Color(0xFF00897B), width: 1.4),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),

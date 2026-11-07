@@ -472,12 +472,14 @@ class FriendSyncService {
   }
 
   int _pickColorForCode(String code) {
+    // 彩度を落とした識別色パレット（グレー基調に合わせる）
     const palette = [
-      0xFF7B1FA2, // パープル
-      0xFF00897B, // ティール
-      0xFF3949AB, // インディゴ
-      0xFFC2185B, // ピンク
-      0xFF0277BD, // ライトブルー
+      0xFF5E7A68, // セージグリーン
+      0xFF546E7A, // スレート
+      0xFF7A6A53, // トープ
+      0xFF6A7BA2, // ダスティブルー
+      0xFF8A6D7B, // モーブ
+      0xFF4F7A72, // ティールグレー
     ];
     return palette[code.hashCode.abs() % palette.length];
   }
