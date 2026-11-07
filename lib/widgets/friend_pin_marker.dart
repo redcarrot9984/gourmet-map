@@ -18,9 +18,10 @@ class FriendPinMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final count = record.chargeCount;
-    final isGold = count >= 3;
-    final isSilver = count == 2;
-    final double circleSize = isGold ? 50 : (isSilver ? 42 : 36);
+    final isGold = count >= 10;
+    final isSilver = count >= 2;
+    final double circleSize =
+        count >= 30 ? 54 : (isGold ? 50 : (isSilver ? 44 : 36));
 
     return GestureDetector(
       onTap: onTap,
@@ -88,16 +89,28 @@ class FriendPinMarker extends StatelessWidget {
                   ],
                 ),
                 child: Center(
-                  child: Icon(
-                    isGold
-                        ? Icons.local_fire_department
-                        : isSilver
-                            ? Icons.stars_rounded
-                            : Icons.restaurant,
-                    color: isGold
-                        ? const Color(0xFFD50000)
-                        : friend.themeColor,
-                    size: isGold ? 26 : (isSilver ? 22 : 18),
+                  // 誰のおすすめか分かるよう、中央はフレンドのアバター絵文字
+                  child: Text(
+                    friend.avatarEmoji,
+                    style: TextStyle(fontSize: circleSize * 0.52),
+                  ),
+                ),
+              ),
+
+              // カテゴリバッジ（左下）
+              Positioned(
+                left: -6,
+                bottom: -2,
+                child: Container(
+                  padding: const EdgeInsets.all(2.5),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: friend.themeColor, width: 1.2),
+                  ),
+                  child: Text(
+                    record.category.split(' ').first,
+                    style: const TextStyle(fontSize: 9),
                   ),
                 ),
               ),
@@ -156,4 +169,3 @@ class FriendPinMarker extends StatelessWidget {
     );
   }
 }
-

@@ -12,12 +12,16 @@ class FriendRestaurantDetailSheet extends StatelessWidget {
   /// N2：行きたいリストへの追加（サンプルフレンドでは null で非表示）。
   final VoidCallback? onAddToWantList;
 
+  /// フレンドの名刺を表示する。
+  final VoidCallback? onViewCard;
+
   const FriendRestaurantDetailSheet({
     super.key,
     required this.friend,
     required this.record,
     required this.onImportToMyMap,
     this.onAddToWantList,
+    this.onViewCard,
   });
 
   @override
@@ -213,6 +217,30 @@ class FriendRestaurantDetailSheet extends StatelessWidget {
               ),
             ],
           ),
+
+          // フレンドの名刺を見る
+          if (onViewCard != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: friend.themeColor,
+                  side: BorderSide(color: friend.themeColor, width: 1.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: onViewCard,
+                icon: const Icon(Icons.badge_outlined, size: 19),
+                label: const Text(
+                  'この人の名刺を見る',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                ),
+              ),
+            ),
+          ],
 
           // N2：フレンドの店を自分の「行きたいリスト」へ追加
           if (onAddToWantList != null) ...[

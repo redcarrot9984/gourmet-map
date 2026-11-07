@@ -60,15 +60,28 @@ class RestaurantRecord {
 
   LatLng get latLng => LatLng(latitude, longitude);
 
-  /// ピンのランク名称を取得（回数に応じて8段階）
+  /// ピンのランク名称を取得。
+  /// ランクアップの間隔は広めに取る（2回・10回・20回・30回・50回・100回）。
   String get rankTitle {
-    if (chargeCount >= 10) return '🌈 神の常連 (RAINBOW)';
-    if (chargeCount >= 7) return '💎 ダイヤ常連 (DIAMOND)';
-    if (chargeCount >= 5) return '👑 殿堂レジェンド (LEGEND)';
-    if (chargeCount >= 4) return '🔷 プラチナ常連 (PLATINUM)';
-    if (chargeCount >= 3) return '🔥 常連レジェンド (GOLD)';
-    if (chargeCount == 2) return '✨ リピーター (SILVER)';
+    if (chargeCount >= 100) return '🌈 神の常連 (RAINBOW)';
+    if (chargeCount >= 50) return '💎 ダイヤ常連 (DIAMOND)';
+    if (chargeCount >= 30) return '👑 殿堂レジェンド (LEGEND)';
+    if (chargeCount >= 20) return '🔷 プラチナ常連 (PLATINUM)';
+    if (chargeCount >= 10) return '🔥 常連レジェンド (GOLD)';
+    if (chargeCount >= 2) return '✨ リピーター (SILVER)';
     return '🍴 初訪問 (BRONZE)';
+  }
+
+  /// 次のランクまでの目安（登録シートのバッジ表示用）。
+  static String nextRankHint(int currentCount) {
+    if (currentCount <= 0) return '初訪問 (銅へ)';
+    if (currentCount == 1) return '現在1回 → 2回で銀へ⚡';
+    if (currentCount < 10) return '現在$currentCount回 → 10回で金へ🔥';
+    if (currentCount < 20) return '現在$currentCount回 → 20回でプラチナへ🔷';
+    if (currentCount < 30) return '現在$currentCount回 → 30回で殿堂へ👑';
+    if (currentCount < 50) return '現在$currentCount回 → 50回でダイヤへ💎';
+    if (currentCount < 100) return '現在$currentCount回 → 100回で虹へ🌈';
+    return '🌈 神の常連';
   }
 
   RestaurantRecord copyWith({

@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../models/restaurant_record.dart';
 
@@ -18,21 +20,23 @@ class RestaurantPinMarker extends StatefulWidget {
 
   /// チャージ回数に応じたマーカー全体の幅
   static double markerWidthForCount(int count) {
-    if (count >= 10) return 132; // 神の常連（虹）
-    if (count >= 7) return 128; // ダイヤ
-    if (count >= 5) return 124; // 殿堂入り特大サイズ
-    if (count >= 3) return 116; // 特大サイズ
-    if (count == 2) return 100; // 少し大きいサイズ
+    if (count >= 100) return 132; // 神の常連（虹）
+    if (count >= 50) return 128; // ダイヤ
+    if (count >= 30) return 124; // 殿堂入り特大サイズ
+    if (count >= 10) return 116; // 金・特大サイズ
+    if (count >= 3) return 106; // 常連手前
+    if (count >= 2) return 100; // 銀・少し大きいサイズ
     return 88; // 通常サイズ
   }
 
   /// チャージ回数に応じたマーカー全体の高さ
   static double markerHeightForCount(int count) {
-    if (count >= 10) return 120; // 神の常連（虹）
-    if (count >= 7) return 116; // ダイヤ
-    if (count >= 5) return 112; // 殿堂入り特大サイズ
-    if (count >= 3) return 104; // 特大サイズ
-    if (count == 2) return 88; // 少し大きいサイズ
+    if (count >= 100) return 120; // 神の常連（虹）
+    if (count >= 50) return 116; // ダイヤ
+    if (count >= 30) return 112; // 殿堂入り特大サイズ
+    if (count >= 10) return 104; // 金・特大サイズ
+    if (count >= 3) return 94; // 常連手前
+    if (count >= 2) return 88; // 銀・少し大きいサイズ
     return 76; // 通常サイズ
   }
 
@@ -58,8 +62,51 @@ class _RestaurantPinMarkerState extends State<RestaurantPinMarker>
     }
   }
 
+  /// 記録の写真（Base64）をデコードする。壊れていれば null。
+  Uint8List? _photoBytes(RestaurantRecord record) {
+    final b64 = record.imageBase64;
+    if (b64 == null || b64.isEmpty) return null;
+    try {
+      return base64Decode(b64);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 写真がない場合の既定の中央アイコン。
+  Widget _defaultCenterIcon(bool isGold, bool isSilver, bool isLegend) {
+    return Center(
+      child: isGold
+          ? Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.local_fire_department,
+                  color: isLegend
+                      ? const Color(0xFFFFEA00)
+                      : const Color(0xFFD50000),
+                  size: isLegend ? 38 : 36,
+                ),
+                Positioned(
+                  bottom: 4,
+                  child: Icon(
+                    isLegend ? Icons.workspace_premium : Icons.restaurant,
+                    color: Colors.white.withValues(alpha: 0.95),
+                    size: 16,
+                  ),
+                ),
+              ],
+            )
+          : Icon(
+              isSilver ? Icons.stars_rounded : Icons.restaurant,
+              color: isSilver ? const Color(0xFF263238) : Colors.white,
+              size: isSilver ? 26 : 19,
+            ),
+    );
+  }
+
   void _syncAnimation() {
-    if (widget.record.chargeCount >= 3) {
+    if (widget.record.chargeCount >= 10) {
       _flameController ??= AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 1100),
@@ -80,23 +127,24 @@ class _RestaurantPinMarkerState extends State<RestaurantPinMarker>
   Widget build(BuildContext context) {
     final record = widget.record;
     final count = record.chargeCount;
-    final isRainbow = count >= 10;
-    final isDiamond = count >= 7 && count < 10;
-    final isLegend = count >= 5;
-    final isPlatinum = count == 4;
-    final isGold = count >= 3;
-    final isSilver = count == 2;
+    final isRainbow = count >= 100;
+    final isDiamond = count >= 50 && count < 100;
+    final isLegend = count >= 30;
+    final isPlatinum = count >= 20 && count < 30;
+    final isGold = count >= 10;
+    final isSilver = count >= 2;
 
-    // ピン円のサイズ（1回: 38, 2回: 48, 3回: 56, 4回: 60, 5〜6回: 64, 7〜9回: 68, 10回以上: 72）
+    // ピン円のサイズ（1回: 38, 2〜9回: 48, 10〜19回: 58, 20〜29回: 62,
+    // 30〜49回: 66, 50〜99回: 70, 100回以上: 74）
     final double pinCircleSize = isRainbow
-        ? 72
+        ? 74
         : isDiamond
-            ? 68
+            ? 70
             : isLegend
-                ? 64
+                ? 66
                 : isPlatinum
-                    ? 60
-                    : (isGold ? 56 : (isSilver ? 48 : 38));
+                    ? 62
+                    : (isGold ? 58 : (isSilver ? 48 : 38));
 
     final List<Color> gradientColors = isRainbow
         ? const [
@@ -216,37 +264,20 @@ class _RestaurantPinMarkerState extends State<RestaurantPinMarker>
                   ),
                 ],
               ),
-              child: Center(
-                child: isGold
-                    ? Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Icon(
-                            Icons.local_fire_department,
-                            color: isLegend
-                                ? const Color(0xFFFFEA00)
-                                : const Color(0xFFD50000),
-                            size: isLegend ? 38 : 36,
-                          ),
-                          Positioned(
-                            bottom: 4,
-                            child: Icon(
-                              isLegend
-                                  ? Icons.workspace_premium
-                                  : Icons.restaurant,
-                              color: Colors.white.withValues(alpha: 0.95),
-                              size: 16,
-                            ),
-                          ),
-                        ],
-                      )
-                    : Icon(
-                        isSilver ? Icons.stars_rounded : Icons.restaurant,
-                        color:
-                            isSilver ? const Color(0xFF263238) : Colors.white,
-                        size: isSilver ? 26 : 19,
+              child: _photoBytes(record) != null
+                  // 料理の写真がある店は、ピンの中に写真を表示する
+                  ? ClipOval(
+                      child: Image.memory(
+                        _photoBytes(record)!,
+                        width: pinCircleSize,
+                        height: pinCircleSize,
+                        fit: BoxFit.cover,
+                        cacheWidth: 160,
+                        errorBuilder: (_, __, ___) =>
+                            _defaultCenterIcon(isGold, isSilver, isLegend),
                       ),
-              ),
+                    )
+                  : _defaultCenterIcon(isGold, isSilver, isLegend),
             ),
 
             // 3回以上の場合は上部に王冠・炎クレストを表示

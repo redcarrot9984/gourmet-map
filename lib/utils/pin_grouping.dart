@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:latlong2/latlong.dart';
 
@@ -96,4 +97,18 @@ LatLng clusterCenter(List<PinGroup> cell) {
     }
   }
   return LatLng(lat / count, lng / count);
+}
+
+/// 合体グループのピンを扇状に広げるためのオフセット（px）を返す。
+/// 2件なら左右、3件以上は円形に配置する。先頭は上方向。
+List<Offset> fanOutOffsets(int count, {double radius = 36}) {
+  if (count <= 1) return const [Offset.zero];
+  if (count == 2) {
+    final r = radius * 0.8;
+    return [Offset(-r, 0), Offset(r, 0)]; // 2件は左右に分ける
+  }
+  return List.generate(count, (i) {
+    final angle = -math.pi / 2 + (2 * math.pi * i / count);
+    return Offset(math.cos(angle) * radius, math.sin(angle) * radius);
+  });
 }
